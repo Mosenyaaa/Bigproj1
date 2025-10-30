@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +43,13 @@ import com.example.bigproj.presentation.Screen.viewmodel.AuthEvent
 import com.example.bigproj.presentation.Screen.viewmodel.LoginScreenViewModel
 import com.example.bigproj.presentation.navigation.Screen
 
+object EmailHolder {
+    var currentEmail: String = ""
+        set(value) {
+            println("📧 EmailHolder изменен: '$field' -> '$value'")
+            field = value
+        }
+}
 @Composable
 fun LoginScreen(
     onNavigateTo: (Screen) -> Unit,
@@ -52,7 +60,12 @@ fun LoginScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is AuthEvent.NavigateToVerification -> onNavigateTo(Screen.Verification)
+                is AuthEvent.NavigateToVerification -> {
+                    // 🔥 УБЕРЕМ СОХРАНЕНИЕ EMAIL ЗДЕСЬ - ОНО УЖЕ В ViewModel
+                    // Просто навигируем с текущим email из состояния
+                    println("🚀 Навигация на Verification с email из состояния: '${state.email}'")
+                    onNavigateTo(Screen.Verification(state.email))
+                }
                 is AuthEvent.NavigateToRegistration -> onNavigateTo(Screen.Register)
             }
         }
@@ -167,12 +180,13 @@ fun LoginScreen(
                                 },
                                 placeholder = {
                                     Text(
-                                        "msenyaaa@gmai.сom",
+                                        "Введите почту",
                                         color = Color(0xFF999999)
-
                                     )
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = primaryColor,
@@ -184,15 +198,19 @@ fun LoginScreen(
                                     keyboardType = KeyboardType.Email
                                 ),
                                 singleLine = true,
-                                leadingIcon = {
-                                }
+                                textStyle = TextStyle(
+                                    fontSize = 16.sp  // ← РАЗМЕР ВВОДИМОГО ТЕКСТА
+                                )
                             )
                         }
 
                         Button(
                             onClick = {
+                                // 🔥 ВОЗВРАЩАЕМ СОХРАНЕНИЕ В EmailHolder
+                                EmailHolder.currentEmail = state.email
+                                println("📧 Email сохранен в holder: '${state.email}'")
                                 viewModel.onEvent(
-                                    LoginScreenEvent.NavigateToScreen(Screen.Verification)
+                                    LoginScreenEvent.NavigateToScreen(Screen.Verification(state.email))
                                 )
                             },
                             modifier = Modifier
@@ -207,7 +225,9 @@ fun LoginScreen(
                                 defaultElevation = 4.dp,
                                 pressedElevation = 8.dp
                             )
-                        ) {
+                        )
+
+                        {
                             Text(
                                 text = "Продолжить",
                                 fontSize = 16.sp,

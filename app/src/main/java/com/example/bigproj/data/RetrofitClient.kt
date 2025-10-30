@@ -1,6 +1,9 @@
 package com.example.bigproj.data
 
+import com.example.bigproj.data.api.ClientService
 import com.example.bigproj.data.api.GeneralService
+import com.example.bigproj.data.interceptor.AuthInterceptor
+import com.example.bigproj.domain.repository.TokenManager
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -24,11 +27,26 @@ object RetrofitClient {
 
     private val contentType = "application/json".toMediaType()
 
-    val retrofit: Retrofit = Retrofit.Builder()
-        .baseUrl("http://87.251.73.164/") //  URL
+    private val retrofit: Retrofit = Retrofit.Builder()
+        .baseUrl("http://87.251.73.164/")
         .addConverterFactory(json.asConverterFactory(contentType))
         .client(client)
         .build()
-
     val apiService: GeneralService = retrofit.create(GeneralService::class.java)
+
+    fun createClientService(tokenManager: TokenManager): ClientService {
+        val authenticatedClient = OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor(tokenManager))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("http://87.251.73.164/")
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .client(authenticatedClient)
+            .build()
+            .create(ClientService::class.java)
+    }
 }

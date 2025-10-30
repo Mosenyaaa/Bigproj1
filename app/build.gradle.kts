@@ -51,6 +51,7 @@ dependencies {
 
     implementation("androidx.compose.ui:ui:1.9.3")
     implementation("androidx.compose.material3:material3:1.4.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -61,6 +62,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.benchmark.traceprocessor)
     implementation(libs.androidx.compose.ui.text)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

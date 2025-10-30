@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -42,8 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bigproj.R
+import com.example.bigproj.domain.repository.TokenManager
 import com.example.bigproj.presentation.Screen.state.RegisterScreenEvent
 import com.example.bigproj.presentation.Screen.state.RegisterScreenState
+import com.example.bigproj.presentation.Screen.viewmodel.AuthEvent
 import com.example.bigproj.presentation.Screen.viewmodel.RegisterScreenViewModel
 import com.example.bigproj.presentation.navigation.Screen
 import perfetto.protos.RegisterSqlPackageArgs
@@ -52,11 +56,35 @@ import perfetto.protos.RegisterSqlPackageArgs
 fun RegisterScreen(
     onNavigateTo: (Screen) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val viewModel = viewModel<RegisterScreenViewModel>()
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is AuthEvent.NavigateToVerification -> {
+                    val tokenManager = TokenManager(context)
+                    if (viewModel.state.name.isNotBlank()) {
+                        tokenManager.saveUserName(viewModel.state.name)
+                        println("💾 Имя сохранено локально: ${viewModel.state.name}")
+                    }
+
+                    EmailHolder.currentEmail = viewModel.state.email
+                    println("📧 Email сохранен для верификации: ${viewModel.state.email}")
+
+                    onNavigateTo(Screen.Verification(viewModel.state.email))
+                }
+                else -> {}
+            }
+        }
+    }
+
     RegisterView(
         state = viewModel.state,
         onEvent = viewModel::onEvent,
-        onNavigateTo = onNavigateTo
+        onNavigateTo = {
+            viewModel.sendCodeOnEmail()
+        }
     )
 }
 
@@ -160,33 +188,7 @@ fun RegisterView(
         )
 
 
-        // Поле для токена врача
-        if (selectedRole == "ВРАЧ") {
-            Text(
-                text = "Токен врача",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(bottom = 6.dp)
-            )
 
-            OutlinedTextField(
-                value = doctorToken,
-                onValueChange = { doctorToken = it },
-                placeholder = { Text("Введите токен врача", color = Color.Gray, fontSize = 14.sp) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF006FFD),
-                    unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f)
-                ),
-                textStyle = TextStyle(fontSize = 14.sp)
-            )
-        }
 
         // Чекбокс согласия
         Row(
@@ -222,40 +224,13 @@ fun RegisterView(
             )
         }
 
-        // Выбор роли
-        Text(
-            text = "Ваша роль?",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier
-                .align(Alignment.Start)
-                .padding(bottom = 8.dp)
-        )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            RoleCard(
-                text = "ПАЦИЕНТ",
-                isSelected = selectedRole == "ПАЦИЕНТ",
-                onClick = { selectedRole = "ПАЦИЕНТ" },
-                modifier = Modifier.width(90.dp)
-            )
-
-            RoleCard(
-                text = "ВРАЧ",
-                isSelected = selectedRole == "ВРАЧ",
-                onClick = { selectedRole = "ВРАЧ" },
-                modifier = Modifier.width(90.dp)
-            )
-        }
 
         // Кнопка регистрации
         Button(
-            onClick = { onNavigateTo(Screen.Verification) },
+            onClick = {
+                onNavigateTo(Screen.Verification(state.email))
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),

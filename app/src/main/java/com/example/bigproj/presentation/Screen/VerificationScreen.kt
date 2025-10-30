@@ -1,5 +1,6 @@
 package com.example.bigproj.presentation.Screen
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,11 +21,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,20 +47,45 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bigproj.domain.repository.TokenManager
+import com.example.bigproj.presentation.Screen.viewmodel.VerificationScreenViewModel
 import com.example.bigproj.presentation.navigation.Screen
 
+// VerificationScreen.kt - ВЕРНЕМ РАБОЧУЮ ВЕРСИЮ
 @Composable
 fun VerificationScreen(
     onNavigateTo: (Screen) -> Unit,
     email: String,
-    onVerificationComplete: () -> Unit,
-    onDifferentEmail: () -> Unit
+    onDifferentEmail: () -> Unit,
+    context: Context
 ) {
+    val viewModel: VerificationScreenViewModel = viewModel()
+
+    val displayEmail = remember {
+        if (email.isNotBlank()) email else EmailHolder.currentEmail
+    }
+
+    println("🎯 VerificationScreen: переданный email='$email', EmailHolder='${EmailHolder.currentEmail}', отображаемый='$displayEmail'")
+
     var verificationCode by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf(60) }
     val primaryColor = Color(0xFF006FFD)
     val codeLength = 6
+
+    LaunchedEffect(Unit) {
+        viewModel.setupTokenManager(context)
+    }
+
+    // 🔥 ИСПРАВЛЯЕМ ТИП ДАННЫХ В LaunchedEffect
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is VerificationScreenViewModel.VerificationEvent.NavigateToMain ->
+                    onNavigateTo(Screen.Main)
+            }
+        }
+    }
 
     Scaffold { paddingValues ->
         Box(
@@ -94,7 +119,6 @@ fun VerificationScreen(
             ) {
                 Spacer(modifier = Modifier.height(25.dp))
 
-
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -117,8 +141,9 @@ fun VerificationScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // 🔥 ОБЯЗАТЕЛЬНО ПОКАЗЫВАЕМ EMAIL ДАЖЕ ЕСЛИ ОН ПУСТОЙ
                     Text(
-                        text = email,
+                        text = displayEmail,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = primaryColor,
@@ -173,9 +198,7 @@ fun VerificationScreen(
 
                         Button(
                             onClick = {
-                                isLoading = true
-                                onVerificationComplete()
-                                isLoading = false
+                                viewModel.verifyCode(verificationCode, context)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -189,9 +212,9 @@ fun VerificationScreen(
                                 defaultElevation = 4.dp,
                                 pressedElevation = 8.dp
                             ),
-                            enabled = verificationCode.length == codeLength && !isLoading
+                            enabled = verificationCode.length == codeLength && !viewModel.isLoading
                         ) {
-                            if (isLoading) {
+                            if (viewModel.isLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     color = Color.White,
@@ -204,6 +227,15 @@ fun VerificationScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
+                        }
+
+                        viewModel.errorMessage?.let { error ->
+                            Text(
+                                text = error,
+                                color = Color.Red,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
 
                         Text(
@@ -287,7 +319,7 @@ fun VerificationCodeInput(
                         keyboardController?.show()
                     }
                 },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), // Changed to Text to allow letters
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             textStyle = TextStyle(
                 color = Color.Transparent,
                 fontSize = 0.sp
