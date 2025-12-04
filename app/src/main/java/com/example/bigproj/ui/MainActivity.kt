@@ -1,3 +1,4 @@
+// ui/MainActivity.kt
 package com.example.bigproj.presentation
 
 import android.os.Bundle

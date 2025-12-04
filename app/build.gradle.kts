@@ -82,6 +82,9 @@ dependencies {
     implementation(libs.kotlinx.converter)
     implementation(libs.androidx.navigation.compose)
 
+    implementation("com.google.accompanist:accompanist-permissions:0.31.1-alpha")
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
 
 
 }

@@ -1,3 +1,4 @@
+// presentation/Screen/state/MainScreenState.kt
 package com.example.bigproj.presentation.Screen.state
 
 sealed class MainScreenEvent {

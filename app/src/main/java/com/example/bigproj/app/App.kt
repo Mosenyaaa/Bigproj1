@@ -1,3 +1,4 @@
+// app/App.kt
 package com.example.bigproj.app
 
 import android.app.Application

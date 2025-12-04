@@ -1,8 +1,8 @@
+// data/model/SendCodeOnEmailResponse.kt
 package com.example.bigproj.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.util.Date
 
 @Serializable
 data class SendCodeOnEmailResponseDto(
@@ -11,7 +11,7 @@ data class SendCodeOnEmailResponseDto(
     val longId: String,
     val slug: String?,
     @SerialName("creation_dt")
-    val creationDt: String, // или используйте Instant если хотите парсить как дату
+    val ceationDt: String, // или используйте Instant если хотите парсить как дату
     val type: String,
     val email: String?,
     @SerialName("user_id")

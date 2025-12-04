@@ -1,6 +1,6 @@
+// presentation/Screen/LoginScreen.kt
 package com.example.bigproj.presentation.Screen
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +50,7 @@ object EmailHolder {
             field = value
         }
 }
+
 @Composable
 fun LoginScreen(
     onNavigateTo: (Screen) -> Unit,
@@ -61,8 +62,6 @@ fun LoginScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is AuthEvent.NavigateToVerification -> {
-                    // 🔥 УБЕРЕМ СОХРАНЕНИЕ EMAIL ЗДЕСЬ - ОНО УЖЕ В ViewModel
-                    // Просто навигируем с текущим email из состояния
                     println("🚀 Навигация на Verification с email из состояния: '${state.email}'")
                     onNavigateTo(Screen.Verification(state.email))
                 }
@@ -199,19 +198,16 @@ fun LoginScreen(
                                 ),
                                 singleLine = true,
                                 textStyle = TextStyle(
-                                    fontSize = 16.sp  // ← РАЗМЕР ВВОДИМОГО ТЕКСТА
+                                    fontSize = 16.sp
                                 )
                             )
                         }
 
                         Button(
                             onClick = {
-                                // 🔥 ВОЗВРАЩАЕМ СОХРАНЕНИЕ В EmailHolder
                                 EmailHolder.currentEmail = state.email
                                 println("📧 Email сохранен в holder: '${state.email}'")
-                                viewModel.onEvent(
-                                    LoginScreenEvent.NavigateToScreen(Screen.Verification(state.email))
-                                )
+                                viewModel.goToVerification() // 🔥 ИЗМЕНЕНИЕ ЗДЕСЬ
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -225,14 +221,20 @@ fun LoginScreen(
                                 defaultElevation = 4.dp,
                                 pressedElevation = 8.dp
                             )
-                        )
-
-                        {
+                        ) {
                             Text(
                                 text = "Продолжить",
                                 fontSize = 16.sp,
                                 modifier = Modifier,
                                 fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        if (!state.errorMessage.isNullOrBlank()) {
+                            Text(
+                                text = state.errorMessage,
+                                color = Color.Red,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp)
                             )
                         }
                     }

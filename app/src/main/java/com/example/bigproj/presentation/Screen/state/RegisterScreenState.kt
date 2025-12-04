@@ -1,3 +1,4 @@
+// presentation/Screen/state/RegisterScreenState.kt
 package com.example.bigproj.presentation.Screen.state
 
 
@@ -8,5 +9,6 @@ sealed class RegisterScreenEvent {
 
 data class RegisterScreenState(
     var email: String = "",
-    var name: String = ""
+    var name: String = "",
+    val errorMessage: String? = null
 )

@@ -1,3 +1,4 @@
+// presentation/Screen/VerificationScreen.kt
 package com.example.bigproj.presentation.Screen
 
 import android.content.Context
@@ -48,11 +49,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.bigproj.domain.repository.TokenManager
 import com.example.bigproj.presentation.Screen.viewmodel.VerificationScreenViewModel
 import com.example.bigproj.presentation.navigation.Screen
 
-// VerificationScreen.kt - ВЕРНЕМ РАБОЧУЮ ВЕРСИЮ
 @Composable
 fun VerificationScreen(
     onNavigateTo: (Screen) -> Unit,
@@ -62,11 +61,13 @@ fun VerificationScreen(
 ) {
     val viewModel: VerificationScreenViewModel = viewModel()
 
+    // 🔥 ПРОВЕРЯЕМ, ЕСТЬ ЛИ ИМЯ ДЛЯ РЕГИСТРАЦИИ
     val displayEmail = remember {
         if (email.isNotBlank()) email else EmailHolder.currentEmail
     }
+    val registrationName = remember { RegistrationHolder.tempName }
 
-    println("🎯 VerificationScreen: переданный email='$email', EmailHolder='${EmailHolder.currentEmail}', отображаемый='$displayEmail'")
+    println("🎯 VerificationScreen: email='$displayEmail', имя='$registrationName'")
 
     var verificationCode by remember { mutableStateOf("") }
     var countdown by remember { mutableStateOf(60) }
@@ -74,10 +75,10 @@ fun VerificationScreen(
     val codeLength = 6
 
     LaunchedEffect(Unit) {
-        viewModel.setupTokenManager(context)
+        viewModel.setupTokenManager(context, displayEmail, registrationName)
     }
 
-    // 🔥 ИСПРАВЛЯЕМ ТИП ДАННЫХ В LaunchedEffect
+    // 🔥 ИСПРАВЛЕННЫЙ LaunchedEffect
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {

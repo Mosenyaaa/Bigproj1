@@ -1,3 +1,4 @@
+// presentation/Screen/main/MainScreenViewModel.kt
 package com.example.bigproj.presentation.Screen.viewmodel
 
 import android.content.Context
@@ -10,6 +11,7 @@ import com.example.bigproj.domain.repository.TokenManager
 import com.example.bigproj.domain.repository.UserRepository
 import com.example.bigproj.presentation.Screen.state.MainScreenEvent
 import com.example.bigproj.presentation.Screen.state.MainScreenState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainScreenViewModel : ViewModel() {
@@ -23,11 +25,18 @@ class MainScreenViewModel : ViewModel() {
         tokenManager = TokenManager(context)
         userRepository = UserRepository(context)
 
-        // Загружаем локальное имя при инициализации
+        // 🔥 ЗАГРУЖАЕМ ЛОКАЛЬНЫЕ ДАННЫЕ ПРИ ИНИЦИАЛИЗАЦИИ
         val localName = tokenManager.getUserName()
+        val localEmail = tokenManager.getUserEmail()
+
         if (!localName.isNullOrBlank()) {
             state = state.copy(userName = localName)
             println("📝 Локальное имя загружено: $localName")
+        }
+
+        if (!localEmail.isNullOrBlank()) {
+            state = state.copy(userEmail = localEmail)
+            println("📧 Локальный email загружен: $localEmail")
         }
     }
 
@@ -57,14 +66,26 @@ class MainScreenViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val user = userRepository.getCurrentUser()
-                println("👤 Данные пользователя загружены: ${user.fullName}, ${user.email}")
+                println("👤 Данные пользователя: ${user.fullName}, врач: ${user.isDoctor}")
 
                 state = state.copy(
                     isLoading = false,
-                    userEmail = user.email,
-                    userName = user.fullName ?: state.userName, // Сохраняем локальное имя если серверное пустое
+                    userEmail = user.email ?: "Не указан",
+                    userName = user.fullName ?: state.userName,
                     isDoctor = user.isDoctor
                 )
+
+                // 🔥 ДИАГНОСТИКА ДЛЯ ВРАЧА
+                if (user.isDoctor) {
+                    println("🎯 ПОЛЬЗОВАТЕЛЬ - ВРАЧ, должен видеть пациентов")
+                    println("📧 Email врача: ${user.email}")
+                    println("👤 Имя врача: ${user.fullName}")
+                } else {
+                    println("🎯 ПОЛЬЗОВАТЕЛЬ - ПАЦИЕНТ, не должен видеть пациентов")
+                    println("📧 Email пациента: ${user.email}")
+                    println("👤 Имя пациента: ${user.fullName}")
+                }
+
             } catch (e: Exception) {
                 println("❌ Ошибка загрузки пользователя: ${e.message}")
                 state = state.copy(
@@ -87,6 +108,7 @@ class MainScreenViewModel : ViewModel() {
 
                 // Сохраняем имя локально
                 tokenManager.saveUserName(newName)
+                println("💾 Имя сохранено локально: $newName")
 
                 state = state.copy(
                     isLoading = false,
@@ -94,6 +116,14 @@ class MainScreenViewModel : ViewModel() {
                     showEditDialog = false
                 )
                 println("✅ Имя успешно обновлено: ${user.fullName}")
+
+                // 🔥 ПРОВЕРЯЕМ ЧЕРЕЗ 2 СЕКУНДЫ
+                launch {
+                    delay(2000)
+                    val currentName = tokenManager.getUserName()
+                    println("🔍 Проверка через 2 секунды - текущее имя: $currentName")
+                }
+
             } catch (e: Exception) {
                 println("❌ Ошибка обновления имени: ${e.message}")
                 val errorMsg = when {
@@ -115,6 +145,8 @@ class MainScreenViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                println("🎯 enableDoctorFeatures вызван с accessKey: '$accessKey'")
+
                 if (accessKey.isNotBlank()) {
                     val user = userRepository.enableDoctorFeatures(accessKey)
 
@@ -127,6 +159,12 @@ class MainScreenViewModel : ViewModel() {
                         showDoctorDialog = false
                     )
                     println("🎯 Пользователь стал врачом: $becameDoctor")
+
+                    // 🔥 ПРОВЕРЯЕМ ЧЕРЕЗ 2 СЕКУНДЫ
+                    launch {
+                        delay(2000)
+                        println("🔍 Проверка роли через 2 секунды - текущая роль: ${state.isDoctor}")
+                    }
                 } else {
                     // Логика переключения на пациента
                     state = state.copy(
@@ -177,9 +215,13 @@ class MainScreenViewModel : ViewModel() {
             try {
                 println("🔐 Подтверждаем смену email с кодом: $code")
                 val user = userRepository.resetEmail(code)
+
+                // 🔥 СОХРАНЯЕМ НОВЫЙ EMAIL ЛОКАЛЬНО
+                tokenManager.saveUserEmail(user.email ?: "") // 🔥 ИСПРАВЛЕНИЕ
+
                 state = state.copy(
                     isLoading = false,
-                    userEmail = user.email,
+                    userEmail = user.email ?: state.userEmail, // 🔥 ИСПРАВЛЕНИЕ
                     showEmailVerificationDialog = false,
                     tempNewEmail = ""
                 )

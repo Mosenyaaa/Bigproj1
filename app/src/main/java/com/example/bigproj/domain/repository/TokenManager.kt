@@ -1,3 +1,4 @@
+// domain/repository/TokenManager.kt
 package com.example.bigproj.domain.repository
 
 import android.content.Context
@@ -32,26 +33,36 @@ class TokenManager(private val context: Context) {
         return token
     }
 
-    fun saveUserName(name: String) {
+    fun saveUserName(name: String?) {
         println("💾 Сохраняем имя: $name")
-        sharedPreferences.edit().putString(USER_NAME_KEY, name).apply()
+        sharedPreferences.edit().putString(USER_NAME_KEY, name ?: "").apply()
     }
 
     fun getUserName(): String? {
         return sharedPreferences.getString(USER_NAME_KEY, null)
     }
 
+    fun saveUserEmail(email: String?) {
+        println("💾 Сохраняем email: $email")
+        sharedPreferences.edit().putString(USER_EMAIL_KEY, email ?: "").apply()
+    }
+
+    fun getUserEmail(): String? {
+        return sharedPreferences.getString(USER_EMAIL_KEY, null)
+    }
+
     fun clearUserToken() {
-        println("🗑️ Очищаем токен")
-        sharedPreferences.edit().remove(USER_TOKEN_KEY).apply()
-
-
-        val tokenAfterClear = sharedPreferences.getString(USER_TOKEN_KEY, null)
-        println("✅ Токен очищен: ${tokenAfterClear == null}")
+        println("🗑️ Очищаем токен и данные пользователя")
+        sharedPreferences.edit()
+            .remove(USER_TOKEN_KEY)
+            .remove(USER_NAME_KEY)
+            .remove(USER_EMAIL_KEY)
+            .apply()
     }
 
     companion object {
         private const val USER_TOKEN_KEY = "user_token"
         private const val USER_NAME_KEY = "user_name"
+        private const val USER_EMAIL_KEY = "user_email"
     }
 }
