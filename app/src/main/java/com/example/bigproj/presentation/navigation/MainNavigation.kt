@@ -3,19 +3,18 @@ package com.example.bigproj.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.example.bigproj.presentation.Screen.CreateSurveyScreen
+import com.example.bigproj.presentation.Screen.DoctorsScreen
 import com.example.bigproj.presentation.Screen.EditSurveyScreen
-import com.example.bigproj.presentation.Screen.LoginScreen
 import com.example.bigproj.presentation.Screen.ManageSurveysScreen
 import com.example.bigproj.presentation.Screen.QuestionEditorScreen
-import com.example.bigproj.presentation.Screen.RegisterScreen
 import com.example.bigproj.presentation.Screen.SurveyDetailScreen
-import com.example.bigproj.presentation.Screen.VerificationScreen
+import com.example.bigproj.presentation.Screen.SurveyListScreen
+import com.example.bigproj.presentation.Screen.main.MainScreen
 import com.example.bigproj.presentation.Screen.main.MainScreenWithBottomNav
 import kotlinx.serialization.Serializable
 
@@ -57,7 +56,7 @@ fun MainNav(
     navHostController: NavHostController,
     startDestination: Screen
 ) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     NavHost(
         modifier = modifier,
@@ -65,87 +64,96 @@ fun MainNav(
         startDestination = startDestination
     ) {
         composable<Screen.Login> {
-            LoginScreen(
-                onNavigateTo = { navigateTo ->
-                    navHostController.navigate(navigateTo)
-                }
-            )
+            // Ваш экран логина
+            androidx.compose.material3.Text("Login Screen")
         }
+
         composable<Screen.Register> {
-            RegisterScreen(
-                onNavigateTo = { navigateTo ->
-                    navHostController.navigate(navigateTo)
-                }
-            )
+            // Ваш экран регистрации
+            androidx.compose.material3.Text("Register Screen")
         }
+
         composable<Screen.Main> {
             MainScreenWithBottomNav(
-                navController = navHostController,  // ✅ navController передается как параметр в composable
-                onNavigateTo = { navigateTo ->
-                    navHostController.navigate(navigateTo)  // ✅ navController доступен здесь
+                navController = navHostController,
+                onNavigateTo = { screen ->
+                    when (screen) {
+                        is Screen.SurveyDetail -> {
+                            navHostController.navigate("survey_detail/${screen.surveyId}")
+                        }
+                        else -> {
+                            // Обработка других экранов
+                        }
+                    }
                 }
             )
         }
+
         composable<Screen.Verification> { backStackEntry ->
             val email = backStackEntry.toRoute<Screen.Verification>().email
+            // Ваш экран верификации
+            androidx.compose.material3.Text("Verification: $email")
+        }
 
-            VerificationScreen(
-                onNavigateTo = { navigateTo ->
-                    navHostController.navigate(navigateTo)
-                },
-                email = email,
-                onDifferentEmail = {
-                    navHostController.navigate(Screen.Login)
-                },
-                context = context
-            )
-        }
-        composable<Screen.SurveyDetail> { backStackEntry ->
-            val surveyId = backStackEntry.toRoute<Screen.SurveyDetail>().surveyId
-            SurveyDetailScreen(
-                surveyId = surveyId,
-                onNavigateBack = { navHostController.popBackStack() },
-                onSurveyCompleted = {
-                    navHostController.navigate(Screen.SurveyList)
-                }
-            )
-        }
-        composable<Screen.CreateSurvey> {
+        // ЭКРАНЫ ДЛЯ КОНСТРУКТОРА ОПРОСОВ
+        composable("create_survey") {
             CreateSurveyScreen(
                 onBackClick = { navHostController.popBackStack() },
                 onSurveyCreated = { surveyId ->
-                    // Можно показать сообщение об успехе или перейти куда-то
+                    println("✅ Опрос создан: $surveyId")
                     navHostController.popBackStack()
                 }
             )
         }
 
-        composable<Screen.QuestionEditor> { backStackEntry ->
-            val questionIndex = backStackEntry.toRoute<Screen.QuestionEditor>().questionIndex
+        composable("manage_surveys") {
+            ManageSurveysScreen(
+                onBackClick = { navHostController.popBackStack() },
+                onEditSurvey = { surveyId ->
+                    navHostController.navigate("edit_survey/$surveyId")
+                },
+                onCreateSurvey = {
+                    navHostController.navigate("create_survey")
+                }
+            )
+        }
+
+        composable("edit_survey/{surveyId}") { backStackEntry ->
+            val surveyId = backStackEntry.arguments?.getString("surveyId")?.toIntOrNull() ?: 0
+            EditSurveyScreen(
+                surveyId = surveyId,
+                onBackClick = { navHostController.popBackStack() },
+                onSurveyUpdated = { navHostController.popBackStack() }
+            )
+        }
+
+        composable("question_editor/{questionIndex}") { backStackEntry ->
+            val questionIndex = backStackEntry.arguments?.getString("questionIndex")?.toIntOrNull() ?: 0
             QuestionEditorScreen(
                 questionIndex = questionIndex,
                 onBackClick = { navHostController.popBackStack() }
             )
         }
-        composable<Screen.ManageSurveys> {
-            ManageSurveysScreen(
-                onBackClick = { navHostController.popBackStack() },
-                onEditSurvey = { surveyId ->
-                    navHostController.navigate(Screen.EditSurvey(surveyId))
-                },
-                onCreateSurvey = {
-                    navHostController.navigate(Screen.CreateSurvey)
-                }
+
+        // ЭКРАНЫ ДЛЯ ОПРОСОВ
+        composable("survey_detail/{surveyId}") { backStackEntry ->
+            val surveyId = backStackEntry.arguments?.getString("surveyId")?.toIntOrNull() ?: 0
+            SurveyDetailScreen(
+                surveyId = surveyId,
+                onNavigateBack = { navHostController.popBackStack() },
+                onSurveyCompleted = { navHostController.popBackStack() }
             )
         }
 
-        composable<Screen.EditSurvey> { backStackEntry ->
-            val surveyId = backStackEntry.toRoute<Screen.EditSurvey>().surveyId
-            EditSurveyScreen(
-                surveyId = surveyId,
-                onBackClick = { navHostController.popBackStack() },
-                onSurveyUpdated = {
-                    navHostController.popBackStack()
+        // ЭКРАНЫ ДЛЯ ВРАЧЕЙ
+        composable("doctors_screen") {
+            DoctorsScreen(
+                navController = navHostController,
+                onNavigateToCreateSurvey = {
+                    navHostController.navigate("create_survey")
+                },
+                onNavigateToManageSurveys = {
+                    navHostController.navigate("manage_surveys")
                 }
             )
         }

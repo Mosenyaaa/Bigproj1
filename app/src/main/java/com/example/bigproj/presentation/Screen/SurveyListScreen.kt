@@ -49,7 +49,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun SurveyListScreen(
     onNavigateToSurvey: (Int) -> Unit = {},
-    onNavigateToMain: () -> Unit = {}
+    onNavigateToMain: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val viewModel = viewModel<SurveyListViewModel>()
@@ -82,7 +83,7 @@ fun SurveyListScreen(
             state = viewModel.state,
             onEvent = viewModel::onEvent,
             onNavigateToSurvey = onNavigateToSurvey,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues) // Используем modifier
         )
     }
 }
@@ -92,10 +93,10 @@ fun SurveyListContent(
     state: com.example.bigproj.presentation.Screen.state.SurveyScreenState,
     onEvent: (SurveyScreenEvent) -> Unit,
     onNavigateToSurvey: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier // Принимаем modifier
 ) {
     Column(
-        modifier = modifier
+        modifier = modifier // Используем переданный modifier
             .fillMaxSize()
             .background(Color(0xFFF8FAFF))
     ) {

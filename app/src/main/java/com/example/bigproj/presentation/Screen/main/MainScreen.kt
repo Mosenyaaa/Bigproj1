@@ -135,6 +135,14 @@ fun MainScreenContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ВРЕМЕННАЯ КНОПКА ДЛЯ ТЕСТА
+            Button(
+                onClick = { onNavigateTo(Screen.Main) }, // Переход к нижней навигации
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            ) {
+                Text("🚀 ТЕСТ: Перейти к конструктору опросов")
+            }
             // Заголовок
             Text(
                 text = "Профиль",

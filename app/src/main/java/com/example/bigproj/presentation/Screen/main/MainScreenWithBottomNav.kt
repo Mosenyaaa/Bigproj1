@@ -1,28 +1,33 @@
 // presentation/Screen/main/MainScreenWithBottomNav.kt
 package com.example.bigproj.presentation.Screen.main
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.bigproj.presentation.Screen.PatientsScreen
+import com.example.bigproj.presentation.Screen.CreateSurveyScreen
+import com.example.bigproj.presentation.Screen.DoctorsScreen
+import com.example.bigproj.presentation.Screen.ManageSurveysScreen
 import com.example.bigproj.presentation.Screen.SurveyListScreen
-import com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel
 import com.example.bigproj.presentation.navigation.Screen
 
 sealed class BottomNavItem(
     val route: String,
-    val title: String
+    val title: String,
+    val icon: ImageVector? = null
 ) {
     object Surveys : BottomNavItem("surveys", "Опросы")
     object Doctors : BottomNavItem("doctors", "Врачи")
@@ -47,7 +52,9 @@ fun MainScreenWithBottomNav(
             NavigationBar {
                 bottomNavItems.forEachIndexed { index, item ->
                     NavigationBarItem(
-                        icon = { }, // 🔥 БЕЗ ИКОНОК
+                        icon = {
+                            Text(item.title.take(1)) // Просто первая буква
+                        },
                         label = {
                             Text(
                                 text = item.title,
@@ -68,27 +75,20 @@ fun MainScreenWithBottomNav(
                 onNavigateToSurvey = { surveyId ->
                     onNavigateTo(Screen.SurveyDetail(surveyId))
                 },
-                onNavigateToMain = {
-                    // Остаемся на этом экране
+                onNavigateToMain = { /* ничего не делаем */ }
+            )
+            1 -> DoctorsScreen(
+                navController = navController,
+                onNavigateToCreateSurvey = {
+                    navController.navigate("create_survey")
+                },
+                onNavigateToManageSurveys = {
+                    navController.navigate("manage_surveys")
                 }
             )
-            1 -> DoctorsScreen() // 🔥 ПУСТОЙ ЭКРАН ВРАЧЕЙ
-            2 -> MainScreen(     // 🔥 СТАРЫЙ МЕЙН СКРИН В НАСТРОЙКАХ
+            2 -> MainScreen( // Старый мейн скрин в настройках
                 onNavigateTo = onNavigateTo
             )
         }
     }
-}
-
-// 🔥 ПУСТОЙ ЭКРАН ДЛЯ ВРАЧЕЙ
-@Composable
-fun DoctorsScreen() {
-    val context = LocalContext.current
-    val viewModel = viewModel<DoctorViewModel>()
-
-    LaunchedEffect(Unit) {
-        viewModel.setupDependencies(context)
-    }
-
-    PatientsScreen()
 }

@@ -1,36 +1,13 @@
+// presentation/Screen/DoctorsScreen.kt
 package com.example.bigproj.presentation.Screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,39 +25,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.bigproj.presentation.navigation.Screen
+import com.example.bigproj.data.model.PatientDto
+import com.example.bigproj.presentation.Screen.state.DoctorScreenEvent
+import com.example.bigproj.presentation.Screen.state.DoctorScreenState
+import com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel
 import kotlinx.coroutines.delay
-import com.example.bigproj.presentation.Screen.PatientCard
-import com.example.bigproj.presentation.Screen.PatientsListContent
 
 enum class DoctorTab {
-    PATIENTS, SURVEYS, STATISTICS
+    PATIENTS, SURVEYS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorsScreen(
     navController: NavHostController,
-    onNavigateToCreateSurvey: () -> Unit = { navController.navigate(Screen.CreateSurvey) },
-    onNavigateToManageSurveys: () -> Unit = { navController.navigate(Screen.ManageSurveys) } // ← ДОБАВЛЕНО
+    onNavigateToCreateSurvey: () -> Unit = {},
+    onNavigateToManageSurveys: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel = viewModel<com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel>()
+    val viewModel = viewModel<DoctorViewModel>()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTab by remember { mutableStateOf(DoctorTab.PATIENTS) }
+    var selectedTab by remember { mutableStateOf(DoctorTab.SURVEYS) }
 
     LaunchedEffect(Unit) {
         viewModel.setupDependencies(context)
     }
 
-    // Показываем ошибки
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == DoctorTab.PATIENTS) {
+            viewModel.onEvent(DoctorScreenEvent.LoadPatients)
+        }
+    }
+
     val errorMessage = viewModel.state.errorMessage
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             snackbarHostState.showSnackbar(
                 message = errorMessage,
-                duration = androidx.compose.material3.SnackbarDuration.Short
+                duration = SnackbarDuration.Short
             )
             delay(3000)
             viewModel.clearError()
@@ -93,6 +77,16 @@ fun DoctorsScreen(
                 title = { Text("Панель врача") }
             )
         },
+        floatingActionButton = {
+            if (selectedTab == DoctorTab.SURVEYS) {
+                FloatingActionButton(
+                    onClick = onNavigateToCreateSurvey,
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
@@ -100,60 +94,40 @@ fun DoctorsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Быстрые действия
-            QuickActionsPanel(
-                onCreateSurvey = onNavigateToCreateSurvey,
-                onViewPatients = { selectedTab = DoctorTab.PATIENTS },
-                onViewStatistics = { selectedTab = DoctorTab.STATISTICS },
-                onManageSurveys = onNavigateToManageSurveys // ← ПЕРЕДАЁМ НОВЫЙ ПАРАМЕТР
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Вкладки
-            TabRow(
+            // ИСПРАВЛЕНО: TabRow заменен на PrimaryTabRow
+            PrimaryTabRow(
                 selectedTabIndex = selectedTab.ordinal,
                 modifier = Modifier.fillMaxWidth(),
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
                 Tab(
-                    text = { Text("Пациенты") },
-                    selected = selectedTab == DoctorTab.PATIENTS,
-                    onClick = { selectedTab = DoctorTab.PATIENTS }
-                )
-                Tab(
-                    text = { Text("Опросы") },
                     selected = selectedTab == DoctorTab.SURVEYS,
-                    onClick = { selectedTab = DoctorTab.SURVEYS }
+                    onClick = { selectedTab = DoctorTab.SURVEYS },
+                    text = { Text("Мои опросы") }
                 )
                 Tab(
-                    text = { Text("Статистика") },
-                    selected = selectedTab == DoctorTab.STATISTICS,
-                    onClick = { selectedTab = DoctorTab.STATISTICS }
+                    selected = selectedTab == DoctorTab.PATIENTS,
+                    onClick = { selectedTab = DoctorTab.PATIENTS },
+                    text = { Text("Мои пациенты") }
                 )
             }
 
-            // Контент вкладок
             when (selectedTab) {
                 DoctorTab.PATIENTS -> {
-                    PatientsListContent(
+                    DoctorsPatientsListContent(
                         state = viewModel.state,
-                        onPatientClick = { patient: com.example.bigproj.data.model.PatientDto ->
-                            // Навигация к ответам пациента
+                        onPatientClick = { patient: PatientDto ->
+                            viewModel.onEvent(DoctorScreenEvent.LoadPatientAttempts(patient.id))
                         },
                         modifier = Modifier.padding(16.dp)
                     )
                 }
                 DoctorTab.SURVEYS -> {
-                    DoctorSurveysContent(
+                    DoctorsSurveysContent(
                         state = viewModel.state,
                         onCreateSurvey = onNavigateToCreateSurvey,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                DoctorTab.STATISTICS -> {
-                    StatisticsContent(
+                        onManageSurveys = onNavigateToManageSurveys,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -163,212 +137,52 @@ fun DoctorsScreen(
 }
 
 @Composable
-fun QuickActionsPanel(
+fun DoctorsSurveysContent(
+    state: DoctorScreenState,
     onCreateSurvey: () -> Unit,
-    onViewPatients: () -> Unit,
-    onViewStatistics: () -> Unit,
-    onManageSurveys: () -> Unit, // ← ДОБАВЛЕНО
+    onManageSurveys: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Быстрые действия",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = onCreateSurvey,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                QuickActionButton(
-                    text = "Создать опрос",
-                    emoji = "📝",
-                    onClick = onCreateSurvey,
-                    modifier = Modifier.weight(1f)
-                )
+                Text("Создать опрос", fontSize = 14.sp)
+            }
 
-                QuickActionButton(
-                    text = "Мои опросы", // ← НОВАЯ КНОПКА
-                    emoji = "📋",
-                    onClick = onManageSurveys,
-                    modifier = Modifier.weight(1f)
+            Button(
+                onClick = onManageSurveys,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
                 )
-
-                QuickActionButton(
-                    text = "Мои пациенты",
-                    emoji = "👥",
-                    onClick = onViewPatients,
-                    modifier = Modifier.weight(1f)
-                )
-
-                QuickActionButton(
-                    text = "Статистика",
-                    emoji = "📊",
-                    onClick = onViewStatistics,
-                    modifier = Modifier.weight(1f)
-                )
+            ) {
+                Text("Все опросы", fontSize = 14.sp)
             }
         }
-    }
-}
 
-@Composable
-fun QuickActionButton(
-    text: String,
-    emoji: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 4.dp
-        )
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = emoji,
-                fontSize = 24.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
+        Spacer(modifier = Modifier.height(24.dp))
 
-@Composable
-fun DoctorSurveysContent(
-    state: com.example.bigproj.presentation.Screen.state.DoctorScreenState,
-    onCreateSurvey: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // Кнопка создания нового опроса
-        Button(
-            onClick = onCreateSurvey,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text("📝 Создать новый опрос", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Разделитель
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Color(0xFFEEEEEE))
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Заголовок
         Text(
-            text = "Мои опросы",
-            fontSize = 20.sp,
+            text = "Последние опросы",
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1A1A1A)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (state.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            // TODO: Добавить список опросов врача
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "📋",
-                        fontSize = 48.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Создайте свой первый опрос",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF444444),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Нажмите кнопку 'Создать новый опрос' выше",
-                        fontSize = 14.sp,
-                        color = Color(0xFF666666),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatisticsContent(
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
         ) {
             Column(
@@ -378,24 +192,151 @@ fun StatisticsContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "📊",
-                    fontSize = 48.sp
-                )
+                Text("📋", fontSize = 48.sp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Статистика в разработке",
+                    text = "Создайте ваш первый опрос",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF444444),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun DoctorsPatientsListContent(
+    state: DoctorScreenState,
+    onPatientClick: (PatientDto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        Text(
+            text = "Мои пациенты",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1A1A1A),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (state.patients.isEmpty()) {
+            EmptyDoctorsPatientsState()
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(state.patients) { patient ->
+                    DoctorsPatientCard(
+                        patient = patient,
+                        onClick = { onPatientClick(patient) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyDoctorsPatientsState() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("👥", fontSize = 48.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Пациенты не найдены",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF444444),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Пациенты появятся здесь после их регистрации и привязки",
+                fontSize = 14.sp,
+                color = Color(0xFF666666),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun DoctorsPatientCard(
+    patient: PatientDto,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = patient.fullName ?: "Без имени",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Text(
+                        text = patient.email,
+                        fontSize = 14.sp,
+                        color = Color(0xFF666666)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            if (patient.isActive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (patient.isActive) "Активен" else "Неактивен",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (patient.isActive) Color(0xFF2E7D32) else Color(0xFFC62828)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("ID: ${patient.id}", fontSize = 12.sp, color = Color(0xFF888888))
+                Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = "Этот раздел будет доступен в ближайшем обновлении",
-                    fontSize = 14.sp,
-                    color = Color(0xFF666666),
-                    textAlign = TextAlign.Center
+                    text = "Зарегистрирован: ${patient.creationDate.take(10)}",
+                    fontSize = 12.sp,
+                    color = Color(0xFF888888)
                 )
             }
         }

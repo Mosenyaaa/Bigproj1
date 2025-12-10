@@ -1,3 +1,4 @@
+// presentation/Screen/state/SurveyManagementState.kt
 package com.example.bigproj.presentation.Screen.state
 
 import com.example.bigproj.domain.repository.ValidationResult
@@ -11,8 +12,8 @@ sealed class SurveyManagementEvent {
     data class SelectQuestion(val index: Int) : SurveyManagementEvent()
 
     data class UpdateQuestionText(val text: String) : SurveyManagementEvent()
-    data class UpdateQuestionVoiceFile(val filename: String) : SurveyManagementEvent()
-    data class UpdateQuestionImageFile(val filename: String) : SurveyManagementEvent()
+    data class UpdateQuestionVoiceFile(val filename: String?) : SurveyManagementEvent()
+    data class UpdateQuestionImageFile(val filename: String?) : SurveyManagementEvent()
 
     data class AddAnswerOption(val option: String) : SurveyManagementEvent()
     data class RemoveAnswerOption(val index: Int) : SurveyManagementEvent()

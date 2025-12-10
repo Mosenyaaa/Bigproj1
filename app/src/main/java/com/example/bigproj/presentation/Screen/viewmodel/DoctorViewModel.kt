@@ -1,4 +1,4 @@
-// presentation/Screen/viewmodel/DoctorViewModel.kt
+// presentation/Screen/viewmodel/DoctorViewModel.kt (исправленная версия)
 package com.example.bigproj.presentation.Screen.viewmodel
 
 import android.content.Context
@@ -29,7 +29,7 @@ class DoctorViewModel : ViewModel() {
             is DoctorScreenEvent.LoadPatients -> loadPatients()
             is DoctorScreenEvent.PatientSelected -> selectPatient(event.patientId)
             is DoctorScreenEvent.LoadPatientAttempts -> loadPatientAttempts(event.patientId)
-            is DoctorScreenEvent.NavigateBack -> navigateBack()
+            DoctorScreenEvent.NavigateBack -> navigateBack()
         }
     }
 
@@ -67,8 +67,8 @@ class DoctorViewModel : ViewModel() {
 
                 state = state.copy(
                     isLoading = false,
-                    patientAttempts = attemptsResponse.attempts,
-                    currentView = DoctorView.PATIENT_ATTEMPTS
+                    patientAttempts = listOf(attemptsResponse),
+                    currentView = com.example.bigproj.presentation.Screen.state.DoctorView.PATIENT_ATTEMPTS
                 )
                 println("✅ Успешно загружено попыток: ${attemptsResponse.attempts.size}")
 

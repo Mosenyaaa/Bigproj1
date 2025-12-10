@@ -1,15 +1,44 @@
+// presentation/Screen/QuestionEditorScreen.kt
 package com.example.bigproj.presentation.Screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,15 +54,15 @@ import com.example.bigproj.presentation.Screen.state.SurveyManagementEvent
 import com.example.bigproj.presentation.Screen.viewmodel.SurveyManagementViewModel
 import com.example.bigproj.presentation.components.ImagePickerDialog
 import com.example.bigproj.presentation.components.VoiceRecorderDialog
+import kotlinx.coroutines.delay
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // Добавляем аннотацию для экспериментального API
 @Composable
 fun QuestionEditorScreen(
     questionIndex: Int,
     onBackClick: () -> Unit = {},
 ) {
-    // Получаем ViewModel внутри композабла
     val viewModel: SurveyManagementViewModel = viewModel()
     val context = LocalContext.current
     val state = viewModel.state
@@ -53,11 +82,9 @@ fun QuestionEditorScreen(
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
 
-    // Переменные для хранения результата из диалогов
     var voiceRecordingResult by remember { mutableStateOf<String?>(null) }
     var imageSelectionResult by remember { mutableStateOf<android.net.Uri?>(null) }
 
-    // Обработка результата записи голоса
     LaunchedEffect(voiceRecordingResult) {
         voiceRecordingResult?.let { filePath ->
             try {
@@ -77,7 +104,6 @@ fun QuestionEditorScreen(
         }
     }
 
-    // Обработка результата выбора изображения
     LaunchedEffect(imageSelectionResult) {
         imageSelectionResult?.let { uri ->
             try {
@@ -96,7 +122,6 @@ fun QuestionEditorScreen(
         }
     }
 
-    // Сброс состояний при закрытии диалогов
     LaunchedEffect(showVoiceRecorder) {
         if (!showVoiceRecorder) {
             isUploading = false
@@ -116,12 +141,8 @@ fun QuestionEditorScreen(
             TopAppBar(
                 title = { Text("Редактирование вопроса ${questionIndex + 1}") },
                 navigationIcon = {
-                    Button(
+                    TextButton(
                         onClick = onBackClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Text("← Назад")
@@ -150,17 +171,16 @@ fun QuestionEditorScreen(
                     viewModel.onEvent(SurveyManagementEvent.UpdateQuestionText(text))
                 },
                 onRemoveVoiceFile = {
-                    viewModel.onEvent(SurveyManagementEvent.UpdateQuestionVoiceFile(null))
+                    viewModel.onEvent(SurveyManagementEvent.RemoveQuestionVoice)
                 },
                 onRemoveImageFile = {
-                    viewModel.onEvent(SurveyManagementEvent.UpdateQuestionImageFile(null))
+                    viewModel.onEvent(SurveyManagementEvent.RemoveQuestionImage)
                 },
                 onStartVoiceRecording = { showVoiceRecorder = true },
                 onStartImageSelection = { showImagePicker = true },
                 modifier = Modifier.padding(paddingValues)
             )
 
-            // Диалог записи голоса
             if (showVoiceRecorder) {
                 VoiceRecorderDialog(
                     onRecordingComplete = { filePath ->
@@ -173,7 +193,6 @@ fun QuestionEditorScreen(
                 )
             }
 
-            // Диалог выбора изображения
             if (showImagePicker) {
                 ImagePickerDialog(
                     onImageSelected = { uri ->
@@ -199,8 +218,8 @@ fun QuestionEditorContent(
     onAddAnswerOption: (String) -> Unit,
     onRemoveAnswerOption: (Int) -> Unit,
     onTextChange: (String) -> Unit,
-    onRemoveVoiceFile: () -> Unit, // ← ДОБАВЛЕНО
-    onRemoveImageFile: () -> Unit, // ← ДОБАВЛЕНО
+    onRemoveVoiceFile: () -> Unit,
+    onRemoveImageFile: () -> Unit,
     onStartVoiceRecording: () -> Unit,
     onStartImageSelection: () -> Unit,
     modifier: Modifier = Modifier
@@ -209,69 +228,48 @@ fun QuestionEditorContent(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
-        // Тип вопроса (информация)
+        // Информация о типе вопроса
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                containerColor = when (question.type) {
+                    "text" -> Color(0xFFE8F5E9)
+                    "voice" -> Color(0xFFE3F2FD)
+                    "picture" -> Color(0xFFF3E5F5)
+                    "combined" -> Color(0xFFFFF3E0)
+                    else -> Color(0xFFF5F5F5)
+                }
+            )
         ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when (question.type) {
-                                "text" -> Color(0xFF4CAF50)
-                                "voice" -> Color(0xFF2196F3)
-                                "picture" -> Color(0xFF9C27B0)
-                                "combined" -> Color(0xFFFF9800)
-                                else -> Color(0xFF666666)
-                            }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = when (question.type) {
-                            "text" -> "T"
-                            "voice" -> "V"
-                            "picture" -> "I"
-                            "combined" -> "C"
-                            else -> "?"
-                        },
-                        fontSize = 12.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = question.displayType,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Тип определён автоматически",
-                        fontSize = 12.sp,
-                        color = Color(0xFF666666)
-                    )
-                }
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = when (question.type) {
+                        "text" -> "📝 Текстовый вопрос"
+                        "voice" -> "🎤 Голосовой вопрос"
+                        "picture" -> "🖼️ Вопрос с изображением"
+                        "combined" -> "🔗 Комбинированный вопрос"
+                        else -> "❓ Неизвестный тип"
+                    },
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = when (question.type) {
+                        "text" -> "Введите текст вопроса"
+                        "voice" -> "Загрузите аудиофайл. Текст - необязательно"
+                        "picture" -> "Загрузите изображение. Текст - необязательно"
+                        "combined" -> "Загрузите и аудио, и изображение"
+                        else -> ""
+                    },
+                    fontSize = 12.sp
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Текст вопроса
         Text(
             text = "Текст вопроса",
             fontWeight = FontWeight.SemiBold,
@@ -291,7 +289,6 @@ fun QuestionEditorContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Медиа-файлы
         Text(
             text = "Медиа-файлы",
             fontWeight = FontWeight.SemiBold,
@@ -306,19 +303,10 @@ fun QuestionEditorContent(
                     .height(80.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Загрузка файла...",
-                        fontSize = 12.sp,
-                        color = Color(0xFF666666)
-                    )
+                    Text("Загрузка файла...", fontSize = 12.sp, color = Color(0xFF666666))
                 }
             }
         } else {
@@ -326,7 +314,6 @@ fun QuestionEditorContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Кнопка записи голоса
                 MediaButton(
                     text = if (question.voiceFilename != null) "Голос загружен" else "Записать голос",
                     isActive = question.voiceFilename != null,
@@ -335,7 +322,6 @@ fun QuestionEditorContent(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Кнопка выбора изображения
                 MediaButton(
                     text = if (question.pictureFilename != null) "Изображение загружено" else "Добавить изображение",
                     isActive = question.pictureFilename != null,
@@ -348,11 +334,7 @@ fun QuestionEditorContent(
 
         if (uploadError != null) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = uploadError,
-                color = Color.Red,
-                fontSize = 12.sp
-            )
+            Text(text = uploadError, color = Color.Red, fontSize = 12.sp)
         }
 
         // Информация о загруженных файлах
@@ -363,9 +345,7 @@ fun QuestionEditorContent(
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp)
-                ) {
+                Column(modifier = Modifier.padding(12.dp)) {
                     if (question.voiceFilename != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -378,9 +358,7 @@ fun QuestionEditorContent(
                                     .background(Color(0xFF4CAF50))
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Голосовой файл",
                                     fontSize = 12.sp,
@@ -393,16 +371,14 @@ fun QuestionEditorContent(
                                     color = Color(0xFF666666)
                                 )
                             }
-                            // Кнопка удаления голосового файла
                             Button(
                                 onClick = onRemoveVoiceFile,
                                 modifier = Modifier.size(24.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = Color.Red
+                                    containerColor = Color.Transparent
                                 )
                             ) {
-                                Text("×", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("×", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                             }
                         }
                     }
@@ -422,9 +398,7 @@ fun QuestionEditorContent(
                                     .background(Color(0xFF2196F3))
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column(
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Изображение",
                                     fontSize = 12.sp,
@@ -437,16 +411,14 @@ fun QuestionEditorContent(
                                     color = Color(0xFF666666)
                                 )
                             }
-                            // Кнопка удаления изображения
                             Button(
                                 onClick = onRemoveImageFile,
                                 modifier = Modifier.size(24.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = Color.Red
+                                    containerColor = Color.Transparent
                                 )
                             ) {
-                                Text("×", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("×", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                             }
                         }
                     }
@@ -456,7 +428,6 @@ fun QuestionEditorContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Варианты ответов (для вопросов с выбором)
         Text(
             text = "Варианты ответов",
             fontWeight = FontWeight.SemiBold,
@@ -471,7 +442,6 @@ fun QuestionEditorContent(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        // Добавление нового варианта
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -491,21 +461,17 @@ fun QuestionEditorContent(
                 enabled = newAnswerOption.isNotBlank(),
                 modifier = Modifier.size(48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
             ) {
                 Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        // Список вариантов
-        if (!question.answerOptions.isNullOrEmpty()) {
+        if (question.answerOptions.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(question.answerOptions!!) { index, option ->
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                itemsIndexed(question.answerOptions) { index, option ->
                     AnswerOptionItem(
                         text = option,
                         index = index,
@@ -518,7 +484,6 @@ fun QuestionEditorContent(
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
-
 
 @Composable
 fun MediaButton(
@@ -533,28 +498,16 @@ fun MediaButton(
         modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isActive) {
-                indicatorColor.copy(alpha = 0.1f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-            contentColor = if (isActive) {
-                indicatorColor
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            }
+            containerColor = if (isActive) indicatorColor.copy(alpha = 0.1f) else Color.White,
+            contentColor = if (isActive) indicatorColor else Color.Black
         ),
-        border = if (!isActive) {
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                Color(0xFFE0E0E0)
-            )
-        } else null
+        border = if (!isActive) BorderStroke(1.dp, Color(0xFFE0E0E0)) else null
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Вместо иконки - цветной кружок с буквой
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -562,11 +515,7 @@ fun MediaButton(
                     .background(indicatorColor)
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = text,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center
-            )
+            Text(text = text, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
     }
 }
@@ -589,42 +538,30 @@ fun AnswerOptionItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            CircleShape
-                        ),
+                        .background(Color(0xFFE3F2FD), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "${index + 1}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color(0xFF2196F3)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Text(
-                    text = text,
-                    fontSize = 14.sp,
-                    color = Color(0xFF444444)
-                )
+                Text(text = text, fontSize = 14.sp, color = Color(0xFF444444))
             }
 
             Button(
                 onClick = onRemove,
                 modifier = Modifier.size(32.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color(0xFF666666)
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
             ) {
                 Text("×", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }

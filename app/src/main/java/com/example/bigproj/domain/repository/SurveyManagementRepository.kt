@@ -1,3 +1,4 @@
+// domain/repository/SurveyManagementRepository.kt
 package com.example.bigproj.domain.repository
 
 import android.content.Context

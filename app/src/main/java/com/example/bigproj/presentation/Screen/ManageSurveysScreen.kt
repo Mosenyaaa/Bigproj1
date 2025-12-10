@@ -1,3 +1,4 @@
+// presentation/Screen/ManageSurveysScreen.kt
 package com.example.bigproj.presentation.Screen
 
 import androidx.compose.foundation.background
@@ -69,8 +70,16 @@ fun ManageSurveysScreen(
             isLoading = true
             val response = doctorRepository.getDoctorSurveys()
             surveys = response.surveys
+
+            // Добавляем диагностику
+            println("✅ Успешно загружено опросов: ${surveys.size}")
+            surveys.forEach { survey ->
+                println("📋 Опрос: ID=${survey.id}, Title='${survey.title}', Status='${survey.status}'")
+            }
+
             isLoading = false
         } catch (e: Exception) {
+            println("❌ Ошибка загрузки опросов: ${e.message}")
             errorMessage = "Ошибка загрузки опросов: ${e.message}"
             isLoading = false
         }

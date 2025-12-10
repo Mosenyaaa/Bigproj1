@@ -1,3 +1,4 @@
+// data/model/QuestionType.kt
 package com.example.bigproj.data.model
 
 enum class QuestionType(val apiValue: String) {
