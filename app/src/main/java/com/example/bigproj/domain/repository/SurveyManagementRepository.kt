@@ -17,7 +17,13 @@ class SurveyManagementRepository(private val context: Context) {
 
     // Опросы
     suspend fun createSurvey(request: CreateSurveyRequestDto): SurveyManagementResponseDto {
-        val response = surveyManagementService.createSurvey(request)
+        val response = surveyManagementService.createSurvey(
+            title = request.title,
+            description = request.description,
+            status = request.status,
+            isPublic = request.isPublic,
+            body = request
+        )
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
         } else {
@@ -45,8 +51,23 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     // Вопросы
-    suspend fun createQuestion(request: CreateQuestionRequestDto): QuestionResponseDto {
-        val response = surveyManagementService.createQuestion(request)
+    suspend fun getAvailableQuestions(
+        query: String? = null,
+        start: Int? = null,
+        finish: Int? = null,
+        limit: Int? = null
+    ): List<QuestionResponseDto> {
+        val response = surveyManagementService.getAvailableQuestions(query, start, finish, limit)
+        if (response.isSuccessful) {
+            return response.body() ?: emptyList()
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun addQuestion(request: CreateQuestionRequestDto): QuestionResponseDto {
+        val response = surveyManagementService.addQuestion(request)
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
         } else {
@@ -74,28 +95,39 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     // Привязка вопросов
-    suspend fun addQuestionToSurvey(request: AddQuestionToSurveyRequestDto) {
+    suspend fun addQuestionToSurvey(request: AddQuestionToSurveyRequestDto): SurveyWithQuestionsDto {
         val response = surveyManagementService.addQuestionToSurvey(request)
-        if (!response.isSuccessful) {
+        if (response.isSuccessful) {
+            return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
             val errorMessage = ErrorHandler.parseError(response)
             throw Exception(errorMessage)
         }
     }
 
-    suspend fun updateQuestionInSurvey(questionInSurveyId: Int, orderIndex: Int) {
-        val response = surveyManagementService.updateQuestionInSurvey(
-            questionInSurveyId,
-            UpdateQuestionInSurveyRequestDto(orderIndex)
+    suspend fun removeQuestionFromSurvey(questionInSurveyId: Int): SurveyWithQuestionsDto {
+        val response = surveyManagementService.removeQuestionFromSurvey(questionInSurveyId)
+        if (response.isSuccessful) {
+            return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun swapQuestionsInSurvey(
+        surveyId: Int,
+        firstOrderIndex: Int,
+        secondOrderIndex: Int
+    ): SurveyWithQuestionsDto {
+        val response = surveyManagementService.swapQuestionsInSurvey(
+            surveyId,
+            firstOrderIndex,
+            secondOrderIndex
         )
-        if (!response.isSuccessful) {
-            val errorMessage = ErrorHandler.parseError(response)
-            throw Exception(errorMessage)
-        }
-    }
-
-    suspend fun deleteQuestionFromSurvey(questionInSurveyId: Int) {
-        val response = surveyManagementService.deleteQuestionFromSurvey(questionInSurveyId)
-        if (!response.isSuccessful) {
+        if (response.isSuccessful) {
+            return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
             val errorMessage = ErrorHandler.parseError(response)
             throw Exception(errorMessage)
         }
@@ -106,6 +138,26 @@ class SurveyManagementRepository(private val context: Context) {
         val response = surveyManagementService.getSurveyWithQuestions(surveyId)
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun changeSurveyStatus(surveyId: Int, status: String): SurveyManagementResponseDto {
+        val response = surveyManagementService.changeSurveyStatus(surveyId, status)
+        if (response.isSuccessful) {
+            return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun getSurveyStatuses(): List<String> {
+        val response = surveyManagementService.getSurveyStatuses()
+        if (response.isSuccessful) {
+            return response.body() ?: emptyList()
         } else {
             val errorMessage = ErrorHandler.parseError(response)
             throw Exception(errorMessage)

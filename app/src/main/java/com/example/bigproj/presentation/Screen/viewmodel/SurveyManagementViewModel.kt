@@ -56,6 +56,7 @@ class SurveyManagementViewModel : ViewModel() {
                 )
                 // Автоматически вызываем навигацию к редактированию этого вопроса
                 // (это должно обрабатываться в UI)
+                validateSurvey()
             }
             is SurveyManagementEvent.SelectQuestion -> {
                 state = state.copy(currentQuestionIndex = event.index)
@@ -127,6 +128,7 @@ class SurveyManagementViewModel : ViewModel() {
                     questions = updatedQuestions,
                     currentQuestionIndex = if (updatedQuestions.isNotEmpty()) 0 else -1
                 )
+                validateSurvey()
             }
             SurveyManagementEvent.RecordVoice -> {
                 // Обработка записи голоса будет в UI
@@ -327,15 +329,14 @@ class SurveyManagementViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // 1. Создаем опрос
-                val surveyRequest =
+                val survey = repository.createSurvey(
                     com.example.bigproj.data.model.CreateSurveyRequestDto(
                         title = state.surveyTitle,
                         description = state.surveyDescription,
                         status = state.surveyStatus,
                         isPublic = state.isPublic
                     )
-
-                val survey = repository.createSurvey(surveyRequest)
+                )
 
                 // 2. Создаем вопросы и привязываем их к опросу
                 for ((index, question) in state.questions.withIndex()) {
@@ -348,11 +349,12 @@ class SurveyManagementViewModel : ViewModel() {
                             isPublic = true
                         )
 
-                    val createdQuestion = repository.createQuestion(questionRequest)
+                    val createdQuestion = repository.addQuestion(questionRequest)
 
                     // Привязываем вопрос к опросу
                     val addToSurveyRequest =
                         com.example.bigproj.data.model.AddQuestionToSurveyRequestDto(
+                        surveyId = survey.id,
                             questionId = createdQuestion.id,
                             orderIndex = index
                         )

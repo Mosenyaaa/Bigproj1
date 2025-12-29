@@ -20,4 +20,10 @@ interface SurveyService {
 
     @GET("/api/client/my_attempts")
     suspend fun getMyAttempts(): Response<MyAttemptsResponse>
+
+    // Напоминания пациента
+    @GET("/api/client/my_reminders")
+    suspend fun getMyReminders(
+        @Query("date") date: String? = null
+    ): Response<com.example.bigproj.data.model.PatientRemindersResponse>
 }

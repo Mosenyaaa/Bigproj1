@@ -35,10 +35,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun CreateSurveyScreen(
     onBackClick: () -> Unit = {},
-    onSurveyCreated: (Int?) -> Unit = {}
+    onSurveyCreated: (Int?) -> Unit = {},
+    onEditQuestion: (Int) -> Unit = {},
+    externalViewModel: SurveyManagementViewModel? = null
 ) {
     val context = LocalContext.current
-    val viewModel = viewModel<SurveyManagementViewModel>()
+    // Используем переданный ViewModel или создаем новый
+    val viewModel = externalViewModel ?: viewModel<SurveyManagementViewModel>()
     val state = viewModel.state
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -79,14 +82,13 @@ fun CreateSurveyScreen(
             )
         },
         floatingActionButton = {
-            // FAB для добавления вопроса - делаем его всегда видимым и рабочим
+            // FAB для добавления вопроса - сразу открываем редактор
             FloatingActionButton(
                 onClick = {
+                    val newIndex = state.questions.size
                     viewModel.onEvent(SurveyManagementEvent.AddNewQuestion)
-                    // После добавления вопроса сразу переходим к его редактированию
-                    if (state.questions.isNotEmpty()) {
-                        viewModel.onEvent(SurveyManagementEvent.SelectQuestion(state.questions.size - 1))
-                    }
+                    viewModel.onEvent(SurveyManagementEvent.SelectQuestion(newIndex))
+                    onEditQuestion(newIndex)
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -98,7 +100,9 @@ fun CreateSurveyScreen(
         CreateSurveyContent(
             state = state,
             onEvent = viewModel::onEvent,
-            modifier = Modifier.padding(paddingValues)
+                onEditQuestion = onEditQuestion,
+                viewModel = viewModel,
+                modifier = Modifier.padding(paddingValues)
         )
     }
 }
@@ -107,6 +111,8 @@ fun CreateSurveyScreen(
 fun CreateSurveyContent(
     state: com.example.bigproj.presentation.Screen.state.SurveyManagementState,
     onEvent: (SurveyManagementEvent) -> Unit,
+    onEditQuestion: (Int) -> Unit,
+    viewModel: SurveyManagementViewModel,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -161,7 +167,12 @@ fun CreateSurveyContent(
 
             // Кнопка добавления вопроса (дублируем FAB для удобства)
             TextButton(
-                onClick = { onEvent(SurveyManagementEvent.AddNewQuestion) },
+                onClick = {
+                    val newIndex = state.questions.size
+                    onEvent(SurveyManagementEvent.AddNewQuestion)
+                    onEvent(SurveyManagementEvent.SelectQuestion(newIndex))
+                    onEditQuestion(newIndex)
+                },
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
@@ -184,7 +195,13 @@ fun CreateSurveyContent(
                         index = index,
                         isSelected = index == state.currentQuestionIndex,
                         totalQuestions = state.questions.size, // <-- ДОБАВИЛИ ЭТО
-                        onSelect = { onEvent(SurveyManagementEvent.SelectQuestion(index)) },
+                        onSelect = {
+                            println("🎯 Клик на вопрос $index")
+                            onEvent(SurveyManagementEvent.SelectQuestion(index))
+                            println("🎯 Вызываем onEditQuestion($index)")
+                            onEditQuestion(index)
+                            println("🎯 onEditQuestion вызван")
+                        },
                         onMoveUp = {
                             if (index > 0) onEvent(SurveyManagementEvent.MoveQuestionUp(index))
                         },

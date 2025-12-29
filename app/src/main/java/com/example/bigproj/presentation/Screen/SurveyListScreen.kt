@@ -24,7 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -181,11 +181,9 @@ fun SurveyTabs(
     val tabs = listOf("Новые", "Начатые", "Завершенные")
     val surveyTabs = listOf(SurveyTab.NEW, SurveyTab.STARTED, SurveyTab.COMPLETED)
 
-    TabRow(
+    PrimaryTabRow(
         selectedTabIndex = surveyTabs.indexOf(selectedTab),
-        modifier = modifier,
-        containerColor = Color.Transparent,
-        contentColor = Color(0xFF006FFD)
+        modifier = modifier
     ) {
         tabs.forEachIndexed { index, title ->
             Tab(

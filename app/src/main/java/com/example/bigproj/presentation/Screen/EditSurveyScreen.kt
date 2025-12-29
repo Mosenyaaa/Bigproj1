@@ -15,10 +15,13 @@ import com.example.bigproj.presentation.Screen.viewmodel.SurveyManagementViewMod
 fun EditSurveyScreen(
     surveyId: Int,
     onBackClick: () -> Unit = {},
-    onSurveyUpdated: () -> Unit = {}
+    onSurveyUpdated: () -> Unit = {},
+    onEditQuestion: (Int) -> Unit = {},
+    externalViewModel: SurveyManagementViewModel? = null
 ) {
     val context = LocalContext.current
-    val viewModel = viewModel<SurveyManagementViewModel>()
+    // Позволяем передать общий ViewModel извне, чтобы делиться состоянием между экранами
+    val viewModel = externalViewModel ?: viewModel<SurveyManagementViewModel>()
 
     // Загружаем существующий опрос
     LaunchedEffect(surveyId) {
@@ -32,6 +35,8 @@ fun EditSurveyScreen(
         onSurveyCreated = {
             // В режиме редактирования просто возвращаемся назад
             onSurveyUpdated()
-        }
+        },
+        onEditQuestion = onEditQuestion,
+        externalViewModel = viewModel
     )
 }

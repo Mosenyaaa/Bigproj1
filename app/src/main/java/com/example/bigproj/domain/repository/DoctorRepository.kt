@@ -96,11 +96,7 @@ class DoctorRepository(private val context: Context) {
                 // 🔥 ПРОВЕРКА СТРУКТУРЫ ОТВЕТА (ДОБАВЛЕНО)
                 if (attempts != null) {
                     println("🔍 Структура ответа:")
-                    println("   - attempts exists: ${attempts.attempts != null}")
-                    println("   - attempts is list: ${attempts.attempts is List<*>}")
-                    attempts.attempts?.let {
-                        println("   - attempts class: ${it.javaClass.simpleName}")
-                    }
+                    println("   - attempts class: ${attempts.attempts.javaClass.simpleName}")
                 }
 
                 // 🔥 ДЕТАЛЬНАЯ ИНФОРМАЦИЯ О ПОПЫТКАХ
@@ -135,6 +131,26 @@ class DoctorRepository(private val context: Context) {
         } catch (e: Exception) {
             println("❌ Ошибка загрузки ответов пациента: ${e.message}")
             throw e
+        }
+    }
+
+    suspend fun getPatientScheduledSurveys(patientId: Int): List<com.example.bigproj.data.model.ScheduledSurveyDto> {
+        val response = doctorService.getPatientScheduledSurveys(patientId)
+        if (response.isSuccessful) {
+            return response.body()?.scheduledSurveys ?: emptyList()
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun scheduleSurvey(request: com.example.bigproj.data.model.ScheduleSurveyRequestDto): com.example.bigproj.data.model.ScheduledSurveyDto {
+        val response = doctorService.scheduleSurvey(request)
+        if (response.isSuccessful) {
+            return response.body() ?: throw Exception("Пустой ответ от сервера")
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
         }
     }
 

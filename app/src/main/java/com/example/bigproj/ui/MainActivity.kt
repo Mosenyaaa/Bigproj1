@@ -22,24 +22,21 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val tokenManager = TokenManager(this)
 
-                // Состояние для определения стартового экрана
-                val startDestination = remember { mutableStateOf<Screen>(Screen.Login) }
-
-                // Проверяем авторизацию при запуске
-                LaunchedEffect(Unit) {
+                // Проверяем авторизацию синхронно при создании composable
+                val startDestination = remember {
                     val userToken = tokenManager.getUserToken()
                     if (userToken != null) {
                         println("🎯 Пользователь авторизован, переходим в профиль")
-                        startDestination.value = Screen.Main
+                        Screen.Main
                     } else {
                         println("🎯 Пользователь не авторизован, остаемся на логине")
-                        startDestination.value = Screen.Login
+                        Screen.Login
                     }
                 }
 
                 MainNav(
                     navHostController = navController,
-                    startDestination = startDestination.value
+                    startDestination = startDestination
                 )
             }
         }

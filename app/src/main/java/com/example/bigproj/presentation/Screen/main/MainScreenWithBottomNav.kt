@@ -87,7 +87,8 @@ fun MainScreenWithBottomNav(
                 }
             )
             2 -> MainScreen( // Старый мейн скрин в настройках
-                onNavigateTo = onNavigateTo
+                onNavigateTo = onNavigateTo,
+                navController = navController
             )
         }
     }

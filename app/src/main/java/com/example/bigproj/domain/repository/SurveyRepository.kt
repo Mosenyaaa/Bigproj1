@@ -253,16 +253,8 @@ class SurveyRepository(private val context: Context) {
             return surveysFromAttempts
         }
 
-        // Если нет попыток, загружаем ВСЕ реальные опросы
-        println("🔄 Попыток нет, загружаем все реальные опросы")
-        val availableSurveys = getAvailableSurveys() // ← ДОЛЖЕН ВОЗВРАЩАТЬ ВСЕ ОПРОСЫ
-
-        if (availableSurveys.isNotEmpty()) {
-            println("✅ Используем реальные опросы: ${availableSurveys.size}")
-            return availableSurveys
-        }
-
-        println("❌ Реальных опросов не найдено")
+        // Если нет попыток, пока ничего не показываем — опросы должны быть назначены врачом
+        println("ℹ️ Попыток нет: опросы будут показаны после назначения/напоминания от врача")
         return emptyList()
     }
 
@@ -270,49 +262,9 @@ class SurveyRepository(private val context: Context) {
         println("📋 Загружаем список опросов: status=$status, query=$query")
 
         try {
-            // 🔥 ИСПРАВЛЕНИЕ: Загружаем ВСЕ доступные опросы
-            println("🔄 Загружаем все доступные опросы")
-
-            val availableSurveys = mutableListOf<SurveyResponseDto>()
-
-            // 🔥 СПИСОК ВСЕХ ВОЗМОЖНЫХ ОПРОСОВ (добавьте нужные ID)
-            val surveyIds = listOf(2, 4) // ← ОПРОСЫ 2 И 4
-
-            for (surveyId in surveyIds) {
-                try {
-                    val survey = getSurvey(surveyId)
-                    availableSurveys.add(survey)
-                    println("✅ Найден реальный опрос: ${survey.title} (ID: ${survey.id}, Вопросов: ${survey.questions.size})")
-                } catch (e: Exception) {
-                    println("⚠️ Опрос $surveyId не доступен: ${e.message}")
-                }
-            }
-
-            if (availableSurveys.isNotEmpty()) {
-                println("✅ Успешно загружено реальных опросов: ${availableSurveys.size}")
-
-                // Применяем фильтрация по статусу если нужно
-                val filteredSurveys = if (!status.isNullOrBlank()) {
-                    availableSurveys.filter { it.status == status }
-                } else {
-                    availableSurveys
-                }
-
-                // Применяем поиск если нужно
-                val searchedSurveys = if (!query.isNullOrBlank()) {
-                    filteredSurveys.filter {
-                        it.title.contains(query, ignoreCase = true) ||
-                                it.description?.contains(query, ignoreCase = true) == true
-                    }
-                } else {
-                    filteredSurveys
-                }
-
-                return searchedSurveys
-            } else {
-                println("❌ Реальных опросов не найдено")
-                return emptyList()
-            }
+            // Пока нет безопасного списка назначенных опросов без попыток/напоминаний.
+            println("⚠️ Список доступных опросов для пациента пуст (ожидание назначения врача)")
+            return emptyList()
 
         } catch (e: Exception) {
             println("❌ Ошибка загрузки опросов: ${e.message}")
@@ -359,6 +311,17 @@ class SurveyRepository(private val context: Context) {
             progress.countAnsweredQuestions.toFloat() / progress.totalCountQuestions.toFloat()
         } else {
             0f
+        }
+    }
+
+    // Напоминания пациента
+    suspend fun getMyReminders(date: String? = null): com.example.bigproj.data.model.PatientRemindersResponse {
+        val response = surveyService.getMyReminders(date)
+        if (response.isSuccessful) {
+            return response.body() ?: com.example.bigproj.data.model.PatientRemindersResponse()
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            throw Exception(errorMessage)
         }
     }
 }

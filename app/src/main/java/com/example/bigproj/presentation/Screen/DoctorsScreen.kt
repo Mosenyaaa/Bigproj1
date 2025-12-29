@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +33,8 @@ import com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel
 import kotlinx.coroutines.delay
 
 enum class DoctorTab {
-    PATIENTS, SURVEYS
+    SURVEYS,
+    PATIENTS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,22 +96,38 @@ fun DoctorsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // ИСПРАВЛЕНО: TabRow заменен на PrimaryTabRow
-            PrimaryTabRow(
-                selectedTabIndex = selectedTab.ordinal,
+            // ИСПРАВЛЕНО: Используем TabRow вместо PrimaryTabRow
+            TabRow(
+                selectedTabIndex = when (selectedTab) {
+                    DoctorTab.SURVEYS -> 0
+                    DoctorTab.PATIENTS -> 1
+                },
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                indicator = { tabPositions ->
+                    val selectedIndex = when (selectedTab) {
+                        DoctorTab.SURVEYS -> 0
+                        DoctorTab.PATIENTS -> 1
+                    }
+                    TabRowDefaults.Indicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedIndex])
+                    )
+                }
             ) {
                 Tab(
                     selected = selectedTab == DoctorTab.SURVEYS,
                     onClick = { selectedTab = DoctorTab.SURVEYS },
-                    text = { Text("Мои опросы") }
+                    text = { Text("Мои опросы") },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Tab(
                     selected = selectedTab == DoctorTab.PATIENTS,
                     onClick = { selectedTab = DoctorTab.PATIENTS },
-                    text = { Text("Мои пациенты") }
+                    text = { Text("Мои пациенты") },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -119,6 +137,9 @@ fun DoctorsScreen(
                         state = viewModel.state,
                         onPatientClick = { patient: PatientDto ->
                             viewModel.onEvent(DoctorScreenEvent.LoadPatientAttempts(patient.id))
+                        },
+                        onScheduleClick = { patientId ->
+                            navController.navigate("schedule_survey/$patientId")
                         },
                         modifier = Modifier.padding(16.dp)
                     )
@@ -210,6 +231,7 @@ fun DoctorsSurveysContent(
 fun DoctorsPatientsListContent(
     state: DoctorScreenState,
     onPatientClick: (PatientDto) -> Unit,
+    onScheduleClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -235,7 +257,8 @@ fun DoctorsPatientsListContent(
                 items(state.patients) { patient ->
                     DoctorsPatientCard(
                         patient = patient,
-                        onClick = { onPatientClick(patient) }
+                        onClick = { onPatientClick(patient) },
+                        onSchedule = { onScheduleClick(patient.id) }
                     )
                 }
             }
@@ -282,7 +305,8 @@ fun EmptyDoctorsPatientsState() {
 @Composable
 fun DoctorsPatientCard(
     patient: PatientDto,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onSchedule: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -338,6 +362,22 @@ fun DoctorsPatientCard(
                     fontSize = 12.sp,
                     color = Color(0xFF888888)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = onSchedule,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Назначить опрос", fontSize = 12.sp)
+                }
             }
         }
     }

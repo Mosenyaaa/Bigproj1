@@ -44,9 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.bigproj.presentation.Screen.state.MainScreenEvent
 import com.example.bigproj.presentation.navigation.Screen
 import androidx.compose.ui.platform.LocalContext
+import com.example.bigproj.presentation.Screen.main.LogoutConfirmationDialog
 import com.example.bigproj.presentation.Screen.state.MainScreenState
 import com.example.bigproj.presentation.Screen.viewmodel.MainScreenViewModel
 import kotlinx.coroutines.delay
@@ -54,6 +56,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun MainScreen(
     onNavigateTo: (Screen) -> Unit = {},
+    navController: NavHostController? = null,
 ) {
     val context = LocalContext.current
     val viewModel = viewModel<MainScreenViewModel>()
@@ -108,6 +111,7 @@ fun MainScreen(
             },
             onNavigateTo = onNavigateTo,
             onClearError = { viewModel.clearError() },
+            navController = navController,
             modifier = Modifier.padding(paddingValues)
         )
     }
@@ -119,6 +123,7 @@ fun MainScreenContent(
     onEvent: (MainScreenEvent) -> Unit,
     onNavigateTo: (Screen) -> Unit,
     onClearError: () -> Unit,
+    navController: NavHostController? = null,
     modifier: Modifier = Modifier
 ) {
     val primaryColor = Color(0xFF006FFD)
@@ -135,14 +140,6 @@ fun MainScreenContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ВРЕМЕННАЯ КНОПКА ДЛЯ ТЕСТА
-            Button(
-                onClick = { onNavigateTo(Screen.Main) }, // Переход к нижней навигации
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-            ) {
-                Text("🚀 ТЕСТ: Перейти к конструктору опросов")
-            }
             // Заголовок
             Text(
                 text = "Профиль",
@@ -373,7 +370,19 @@ fun MainScreenContent(
             onDismiss = { onEvent(MainScreenEvent.HideLogoutDialog) },
             onConfirm = {
                 onEvent(MainScreenEvent.ConfirmLogout)
-                onNavigateTo(Screen.Login)
+                // Используем navController для навигации, если он доступен
+                navController?.let {
+                    // Очищаем весь стек навигации и переходим на экран логина
+                    it.navigate(Screen.Login) {
+                        // Очищаем весь стек навигации
+                        popUpTo(it.graph.startDestinationId) { inclusive = true }
+                        // Предотвращаем множественные переходы
+                        launchSingleTop = true
+                    }
+                } ?: run {
+                    // Fallback на старый способ, если navController не доступен
+                    onNavigateTo(Screen.Login)
+                }
             }
         )
     }

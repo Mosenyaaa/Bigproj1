@@ -10,7 +10,13 @@ interface SurveyManagementService {
 
     // Опросы
     @POST("/api/doctor/create_survey")
-    suspend fun createSurvey(@Body request: CreateSurveyRequestDto): Response<SurveyManagementResponseDto>
+    suspend fun createSurvey(
+        @Query("title") title: String,
+        @Query("description") description: String? = null,
+        @Query("status") status: String = "draft",
+        @Query("is_public") isPublic: Boolean = false,
+        @Body body: CreateSurveyRequestDto? = null // дублируем для совместимости с бэком
+    ): Response<SurveyManagementResponseDto>
 
     @PUT("/api/doctor/update_survey")
     suspend fun updateSurvey(
@@ -22,8 +28,16 @@ interface SurveyManagementService {
     suspend fun deleteSurvey(@Query("survey_id") surveyId: Int): Response<Unit>
 
     // Вопросы
-    @POST("/api/doctor/create_question")
-    suspend fun createQuestion(@Body request: CreateQuestionRequestDto): Response<QuestionResponseDto>
+    @GET("/api/doctor/get_available_questions")
+    suspend fun getAvailableQuestions(
+        @Query("query") query: String? = null,
+        @Query("st") start: Int? = null,
+        @Query("fn") finish: Int? = null,
+        @Query("limit") limit: Int? = null
+    ): Response<List<QuestionResponseDto>>
+
+    @POST("/api/doctor/add_question")
+    suspend fun addQuestion(@Body request: CreateQuestionRequestDto): Response<QuestionResponseDto>
 
     @PUT("/api/doctor/update_question")
     suspend fun updateQuestion(
@@ -36,20 +50,30 @@ interface SurveyManagementService {
 
     // Привязка вопросов к опросу
     @POST("/api/doctor/add_question_to_survey")
-    suspend fun addQuestionToSurvey(@Body request: AddQuestionToSurveyRequestDto): Response<Unit>
+    suspend fun addQuestionToSurvey(@Body request: AddQuestionToSurveyRequestDto): Response<SurveyWithQuestionsDto>
 
-    @PUT("/api/doctor/update_question_in_survey")
-    suspend fun updateQuestionInSurvey(
-        @Query("question_in_survey_id") questionInSurveyId: Int,
-        @Body request: UpdateQuestionInSurveyRequestDto
-    ): Response<Unit>
+    @DELETE("/api/doctor/remove_question_from_survey")
+    suspend fun removeQuestionFromSurvey(@Query("question_in_survey_id") questionInSurveyId: Int): Response<SurveyWithQuestionsDto>
 
-    @DELETE("/api/doctor/delete_question_from_survey")
-    suspend fun deleteQuestionFromSurvey(@Query("question_in_survey_id") questionInSurveyId: Int): Response<Unit>
+    @PUT("/api/doctor/swap_questions_in_survey")
+    suspend fun swapQuestionsInSurvey(
+        @Query("survey_id") surveyId: Int,
+        @Query("order_index_1") firstOrderIndex: Int,
+        @Query("order_index_2") secondOrderIndex: Int
+    ): Response<SurveyWithQuestionsDto>
 
     // Получение детальной информации
-    @GET("/api/doctor/survey_with_questions")
+    @GET("/api/doctor/get_survey")
     suspend fun getSurveyWithQuestions(@Query("survey_id") surveyId: Int): Response<SurveyWithQuestionsDto>
+
+    @GET("/api/doctor/get_survey_statuses")
+    suspend fun getSurveyStatuses(): Response<List<String>>
+
+    @PUT("/api/doctor/change_survey_status")
+    suspend fun changeSurveyStatus(
+        @Query("survey_id") surveyId: Int,
+        @Query("status") status: String
+    ): Response<SurveyManagementResponseDto>
 }
 
 @Serializable

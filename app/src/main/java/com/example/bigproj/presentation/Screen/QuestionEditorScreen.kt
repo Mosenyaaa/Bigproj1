@@ -49,7 +49,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.bigproj.domain.repository.FileRepository
 import com.example.bigproj.presentation.Screen.state.SurveyManagementEvent
 import com.example.bigproj.presentation.Screen.viewmodel.SurveyManagementViewModel
 import com.example.bigproj.presentation.components.ImagePickerDialog
@@ -62,10 +61,27 @@ import java.io.File
 fun QuestionEditorScreen(
     questionIndex: Int,
     onBackClick: () -> Unit = {},
+    externalViewModel: SurveyManagementViewModel? = null
 ) {
-    val viewModel: SurveyManagementViewModel = viewModel()
+    // Используем переданный ViewModel или создаем новый с тем же ключом для сохранения состояния
+    val viewModel = externalViewModel ?: viewModel<SurveyManagementViewModel>(
+        key = "SurveyManagementViewModel"
+    )
     val context = LocalContext.current
     val state = viewModel.state
+
+    // Инициализируем зависимости при первом запуске
+    LaunchedEffect(Unit) {
+        println("🎯 QuestionEditorScreen: инициализация для вопроса $questionIndex")
+        viewModel.setupDependencies(context)
+        // Убеждаемся, что выбран правильный вопрос
+        if (questionIndex in state.questions.indices) {
+            viewModel.onEvent(SurveyManagementEvent.SelectQuestion(questionIndex))
+            println("🎯 QuestionEditorScreen: вопрос $questionIndex выбран, всего вопросов: ${state.questions.size}")
+        } else {
+            println("⚠️ QuestionEditorScreen: вопрос $questionIndex не найден, всего вопросов: ${state.questions.size}")
+        }
+    }
 
     val question = if (questionIndex in state.questions.indices) {
         state.questions[questionIndex]
@@ -74,67 +90,10 @@ fun QuestionEditorScreen(
         return
     }
 
-    val fileRepository = remember { FileRepository(context) }
-
     var newAnswerOption by remember { mutableStateOf("") }
     var showVoiceRecorder by remember { mutableStateOf(false) }
     var showImagePicker by remember { mutableStateOf(false) }
-    var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
-
-    var voiceRecordingResult by remember { mutableStateOf<String?>(null) }
-    var imageSelectionResult by remember { mutableStateOf<android.net.Uri?>(null) }
-
-    LaunchedEffect(voiceRecordingResult) {
-        voiceRecordingResult?.let { filePath ->
-            try {
-                isUploading = true
-                uploadError = null
-                val uri = android.net.Uri.fromFile(File(filePath))
-                val filename = fileRepository.uploadVoiceFile(uri)
-                viewModel.onEvent(SurveyManagementEvent.UpdateQuestionVoiceFile(filename))
-                isUploading = false
-                showVoiceRecorder = false
-            } catch (e: Exception) {
-                uploadError = "Ошибка загрузки голоса: ${e.message}"
-                isUploading = false
-            } finally {
-                voiceRecordingResult = null
-            }
-        }
-    }
-
-    LaunchedEffect(imageSelectionResult) {
-        imageSelectionResult?.let { uri ->
-            try {
-                isUploading = true
-                uploadError = null
-                val filename = fileRepository.uploadImageFile(uri)
-                viewModel.onEvent(SurveyManagementEvent.UpdateQuestionImageFile(filename))
-                isUploading = false
-                showImagePicker = false
-            } catch (e: Exception) {
-                uploadError = "Ошибка загрузки изображения: ${e.message}"
-                isUploading = false
-            } finally {
-                imageSelectionResult = null
-            }
-        }
-    }
-
-    LaunchedEffect(showVoiceRecorder) {
-        if (!showVoiceRecorder) {
-            isUploading = false
-            uploadError = null
-        }
-    }
-
-    LaunchedEffect(showImagePicker) {
-        if (!showImagePicker) {
-            isUploading = false
-            uploadError = null
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -155,7 +114,6 @@ fun QuestionEditorScreen(
             QuestionEditorContent(
                 question = question,
                 newAnswerOption = newAnswerOption,
-                isUploading = isUploading,
                 uploadError = uploadError,
                 onNewAnswerOptionChange = { newAnswerOption = it },
                 onAddAnswerOption = {
@@ -183,24 +141,24 @@ fun QuestionEditorScreen(
 
             if (showVoiceRecorder) {
                 VoiceRecorderDialog(
-                    onRecordingComplete = { filePath ->
-                        voiceRecordingResult = filePath
+                    onRecordingComplete = { serverFilename ->
+                        viewModel.onEvent(SurveyManagementEvent.UpdateQuestionVoiceFile(serverFilename))
+                        uploadError = null
                     },
                     onDismiss = {
                         showVoiceRecorder = false
-                        voiceRecordingResult = null
                     }
                 )
             }
 
             if (showImagePicker) {
                 ImagePickerDialog(
-                    onImageSelected = { uri ->
-                        imageSelectionResult = uri
+                    onImageSelected = { serverFilename ->
+                        viewModel.onEvent(SurveyManagementEvent.UpdateQuestionImageFile(serverFilename))
+                        uploadError = null
                     },
                     onDismiss = {
                         showImagePicker = false
-                        imageSelectionResult = null
                     }
                 )
             }
@@ -212,7 +170,6 @@ fun QuestionEditorScreen(
 fun QuestionEditorContent(
     question: com.example.bigproj.presentation.Screen.state.QuestionUiModel,
     newAnswerOption: String,
-    isUploading: Boolean,
     uploadError: String?,
     onNewAnswerOptionChange: (String) -> Unit,
     onAddAnswerOption: (String) -> Unit,
@@ -296,40 +253,25 @@ fun QuestionEditorContent(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        if (isUploading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Загрузка файла...", fontSize = 12.sp, color = Color(0xFF666666))
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                MediaButton(
-                    text = if (question.voiceFilename != null) "Голос загружен" else "Записать голос",
-                    isActive = question.voiceFilename != null,
-                    indicatorColor = Color(0xFF4CAF50),
-                    onClick = onStartVoiceRecording,
-                    modifier = Modifier.weight(1f)
-                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MediaButton(
+                text = if (question.voiceFilename != null) "Голос загружен" else "Записать голос",
+                isActive = question.voiceFilename != null,
+                indicatorColor = Color(0xFF4CAF50),
+                onClick = onStartVoiceRecording,
+                modifier = Modifier.weight(1f)
+            )
 
-                MediaButton(
-                    text = if (question.pictureFilename != null) "Изображение загружено" else "Добавить изображение",
-                    isActive = question.pictureFilename != null,
-                    indicatorColor = Color(0xFF2196F3),
-                    onClick = onStartImageSelection,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            MediaButton(
+                text = if (question.pictureFilename != null) "Изображение загружено" else "Добавить изображение",
+                isActive = question.pictureFilename != null,
+                indicatorColor = Color(0xFF2196F3),
+                onClick = onStartImageSelection,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         if (uploadError != null) {
