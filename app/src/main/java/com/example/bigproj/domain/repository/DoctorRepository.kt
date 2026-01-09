@@ -3,6 +3,7 @@ package com.example.bigproj.domain.repository
 
 import android.content.Context
 import com.example.bigproj.data.RetrofitClient
+import com.example.bigproj.data.model.*
 import com.example.bigproj.domain.utils.ErrorHandler
 
 class DoctorRepository(private val context: Context) {
@@ -12,26 +13,23 @@ class DoctorRepository(private val context: Context) {
         RetrofitClient.createDoctorService(tokenManager)
     }
 
-    suspend fun getPatients(): com.example.bigproj.data.model.PatientsListResponse {
+    suspend fun getPatients(): PatientsListResponse {
         println("👥 ДИАГНОСТИКА: Загружаем список пациентов через /api/doctor/my_patients")
 
         try {
-            // 🔥 ИСПОЛЬЗУЕМ НОВЫЙ ЭНДПОИНТ
             val response = doctorService.getMyPatients()
 
             println("📡 Ответ my_patients: код=${response.code()}, успешно=${response.isSuccessful}")
-            println("📊 Полный ответ пациентов: ${response.body()}") // 🔥 ДОБАВЛЕНО
+            println("📊 Полный ответ пациентов: ${response.body()}")
 
             if (response.isSuccessful) {
                 val patientsResponse = response.body()
                 println("✅ Пациенты загружены: ${patientsResponse?.patients?.size ?: 0}")
 
-                // 🔥 ПРОВЕРКА ПРИВЯЗКИ КОНКРЕТНОГО ПАЦИЕНТА (ДОБАВЛЕНО)
                 val targetPatient = patientsResponse?.patients?.find { it.id == 6 }
                 println("🎯 Поиск пациента ID=6: ${if (targetPatient != null) "НАЙДЕН" else "НЕ НАЙДЕН"}")
                 println("🎯 Данные пациента ID=6: $targetPatient")
 
-                // 🔥 ВЫВОДИМ ВСЕХ ПАЦИЕНТОВ ДЛЯ ДЕБАГА
                 patientsResponse?.patients?.forEachIndexed { index: Int, patient ->
                     println("👤 Пациент ${index + 1}:")
                     println("   ID: ${patient.id}")
@@ -56,7 +54,6 @@ class DoctorRepository(private val context: Context) {
                 println("❌ Тело ошибки: $errorBody")
                 val errorMessage = ErrorHandler.parseError(response)
 
-                // 🔥 ДЕТАЛЬНЫЙ АНАЛИЗ ОШИБОК
                 when (response.code()) {
                     401 -> println("🔐 Ошибка 401: Неавторизован - проверьте токен")
                     403 -> println("🔐 Ошибка 403: Доступ запрещен - пользователь не врач")
@@ -73,33 +70,29 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun getPatientSurveyAttempts(patientId: Int): com.example.bigproj.data.model.PatientAttemptsResponse {
+    suspend fun getPatientSurveyAttempts(patientId: Int): PatientAttemptsResponse {
         println("📊 ДИАГНОСТИКА: Загружаем ответы пациента ID: $patientId")
 
         try {
-            // 🔥 ИСПОЛЬЗУЕМ НОВЫЙ ЭНДПОИНТ
             val response = doctorService.getPatientAttempts(patientId)
 
             println("📡 Ответ patient_attempts: код=${response.code()}, успешно=${response.isSuccessful}")
-            println("📡 Полный ответ: ${response.body()}") // 🔥 ДОБАВЛЕНО
+            println("📡 Полный ответ: ${response.body()}")
 
             if (response.isSuccessful) {
                 val attempts = response.body()
 
-                // 🔥 ДЕТАЛЬНАЯ ДИАГНОСТИКА (ДОБАВЛЕНО)
                 println("✅ Ответы пациента загружены:")
                 println("   - attempts: ${attempts?.attempts?.size ?: 0}")
                 println("   - patientInfo: ${attempts?.patientInfo}")
                 println("   - totalCount: ${attempts?.totalCount}")
                 println("   - returnedCount: ${attempts?.returnedCount}")
 
-                // 🔥 ПРОВЕРКА СТРУКТУРЫ ОТВЕТА (ДОБАВЛЕНО)
                 if (attempts != null) {
                     println("🔍 Структура ответа:")
                     println("   - attempts class: ${attempts.attempts.javaClass.simpleName}")
                 }
 
-                // 🔥 ДЕТАЛЬНАЯ ИНФОРМАЦИЯ О ПОПЫТКАХ
                 attempts?.attempts?.forEachIndexed { index: Int, attempt ->
                     println("📝 Попытка ${index + 1}:")
                     println("   ID попытки: ${attempt.attemptId}")
@@ -134,7 +127,7 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun getPatientScheduledSurveys(patientId: Int): List<com.example.bigproj.data.model.ScheduledSurveyDto> {
+    suspend fun getPatientScheduledSurveys(patientId: Int): List<ScheduledSurveyDto> {
         val response = doctorService.getPatientScheduledSurveys(patientId)
         if (response.isSuccessful) {
             return response.body()?.scheduledSurveys ?: emptyList()
@@ -144,7 +137,7 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun scheduleSurvey(request: com.example.bigproj.data.model.ScheduleSurveyRequestDto): com.example.bigproj.data.model.ScheduledSurveyDto {
+    suspend fun scheduleSurvey(request: ScheduleSurveyRequestDto): ScheduledSurveyDto {
         val response = doctorService.scheduleSurvey(request)
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
@@ -154,7 +147,7 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun getDoctorSurveys(): com.example.bigproj.data.model.SurveyListResponseDto {
+    suspend fun getDoctorSurveys(): SurveyListResponseDto {
         println("📋 Получаем опросы текущего врача")
 
         try {
@@ -179,31 +172,27 @@ class DoctorRepository(private val context: Context) {
             throw e
         }
     }
+
     suspend fun fullDiagnosis() {
         println("🔍 ПОЛНАЯ ДИАГНОСТИКА ПРОБЛЕМЫ")
 
         try {
-            // 1. Кто текущий врач
             val userRepo = UserRepository(context)
             val doctor = userRepo.getCurrentUser()
             println("👨‍⚕️ Текущий врач:")
             println("   - ID: ${doctor.id}")
             println("   - Email: ${doctor.email}")
 
-            // 2. Какие опросы у врача
             val doctorSurveys = getDoctorSurveys()
             println("📋 Опросы врача: ${doctorSurveys.surveys.size}")
 
-            // 3. Какие пациенты
             val patients = getPatients()
             println("👥 Пациенты: ${patients.patients.size}")
 
-            // 4. Проверим конкретного пациента
             val targetPatient = patients.patients.find { it.id == 6 }
             if (targetPatient != null) {
                 println("🎯 Пациент ID=6 найден")
 
-                // 5. Проверим попытки
                 try {
                     val attempts = getPatientSurveyAttempts(6)
                     println("📊 Попытки пациента: ${attempts.attempts.size}")
@@ -219,6 +208,78 @@ class DoctorRepository(private val context: Context) {
 
         } catch (e: Exception) {
             println("❌ Ошибка диагностики: ${e.message}")
+        }
+    }
+
+    // 🔥 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ВРАЧАМИ ПАЦИЕНТА
+    suspend fun getMyDoctors(): List<User1ClientSO> {
+        println("🔄 Загружаем моих врачей...")
+        try {
+            val response = doctorService.getMyDoctors()
+            if (response.isSuccessful) {
+                return response.body() ?: emptyList()
+            } else {
+                val errorMessage = ErrorHandler.parseError(response)
+                throw Exception(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Ошибка загрузки моих врачей: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun getAvailableDoctors(
+        query: String? = null,
+        st: Int = 0,
+        fn: Int? = null,
+        limit: Int? = null
+    ): AvailableDoctorsListResponse {
+        println("🔄 Загружаем всех врачей...")
+        try {
+            val response = doctorService.getAvailableDoctors(query, st, fn, limit)
+            if (response.isSuccessful) {
+                return response.body() ?: throw Exception("Пустой ответ от сервера")
+            } else {
+                val errorMessage = ErrorHandler.parseError(response)
+                throw Exception(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Ошибка загрузки всех врачей: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun associateDoctor(doctorId: Int): DoctorAssociationResponse {
+        println("🔄 Привязываемся к врачу ID: $doctorId")
+        try {
+            val request = DoctorAssociationRequest(doctorId)
+            val response = doctorService.associateDoctor(request)
+            if (response.isSuccessful) {
+                return response.body() ?: throw Exception("Пустой ответ от сервера")
+            } else {
+                val errorMessage = ErrorHandler.parseError(response)
+                throw Exception(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Ошибка привязки к врачу: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun disassociateDoctor(doctorId: Int): DoctorAssociationResponse {
+        println("🔄 Отвязываемся от врача ID: $doctorId")
+        try {
+            val request = DoctorAssociationRequest(doctorId)
+            val response = doctorService.disassociateDoctor(request)
+            if (response.isSuccessful) {
+                return response.body() ?: throw Exception("Пустой ответ от сервера")
+            } else {
+                val errorMessage = ErrorHandler.parseError(response)
+                throw Exception(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Ошибка отвязки от врача: ${e.message}")
+            throw e
         }
     }
 }

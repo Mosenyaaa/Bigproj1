@@ -18,10 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.bigproj.presentation.Screen.CreateSurveyScreen
-import com.example.bigproj.presentation.Screen.DoctorsScreen
-import com.example.bigproj.presentation.Screen.ManageSurveysScreen
-import com.example.bigproj.presentation.Screen.SurveyListScreen
+import com.example.bigproj.presentation.Screen.PatientDoctorsScreen
 import com.example.bigproj.presentation.navigation.Screen
 
 sealed class BottomNavItem(
@@ -53,7 +50,7 @@ fun MainScreenWithBottomNav(
                 bottomNavItems.forEachIndexed { index, item ->
                     NavigationBarItem(
                         icon = {
-                            Text(item.title.take(1)) // Просто первая буква
+                            Text(item.title.take(1))
                         },
                         label = {
                             Text(
@@ -70,26 +67,30 @@ fun MainScreenWithBottomNav(
             }
         }
     ) { paddingValues ->
+        // Прямой показ экранов без навигации
         when (selectedItem) {
-            0 -> SurveyListScreen(
-                onNavigateToSurvey = { surveyId ->
-                    onNavigateTo(Screen.SurveyDetail(surveyId))
-                },
-                onNavigateToMain = { /* ничего не делаем */ }
-            )
-            1 -> DoctorsScreen(
-                navController = navController,
-                onNavigateToCreateSurvey = {
-                    navController.navigate("create_survey")
-                },
-                onNavigateToManageSurveys = {
-                    navController.navigate("manage_surveys")
-                }
-            )
-            2 -> MainScreen( // Старый мейн скрин в настройках
-                onNavigateTo = onNavigateTo,
-                navController = navController
-            )
+            0 -> {
+                // Экран опросов
+                com.example.bigproj.presentation.Screen.SurveyListScreen(
+                    onNavigateToSurvey = { surveyId ->
+                        navController.navigate("survey_detail/$surveyId")
+                    },
+                    onNavigateToMain = {
+                        navController.navigate(Screen.Main)
+                    }
+                )
+            }
+            1 -> {
+                // Экран врачей
+                com.example.bigproj.presentation.Screen.PatientDoctorsScreen()
+            }
+            2 -> {
+                // Экран настроек (главный экран)
+                MainScreen(
+                    onNavigateTo = onNavigateTo,
+                    navController = navController
+                )
+            }
         }
     }
 }

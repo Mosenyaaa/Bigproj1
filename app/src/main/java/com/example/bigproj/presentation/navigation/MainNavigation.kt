@@ -17,6 +17,7 @@ import com.example.bigproj.presentation.Screen.SurveyListScreen
 import com.example.bigproj.presentation.Screen.main.MainScreen
 import com.example.bigproj.presentation.Screen.main.MainScreenWithBottomNav
 import kotlinx.serialization.Serializable
+import com.example.bigproj.presentation.Screen.PatientDoctorsScreen
 
 sealed class Screen {
     @Serializable
@@ -48,6 +49,9 @@ sealed class Screen {
 
     @Serializable
     data class EditSurvey(val surveyId: Int) : Screen()
+
+    @Serializable
+    data object PatientDoctors : Screen()
 }
 
 @Composable
@@ -183,6 +187,21 @@ fun MainNav(
             com.example.bigproj.presentation.Screen.ScheduleSurveyScreen(
                 patientId = patientId,
                 onBack = { navHostController.popBackStack() }
+            )
+        }
+
+        composable<Screen.PatientDoctors> {
+            PatientDoctorsScreen()
+        }
+
+        composable<Screen.SurveyList> {
+            SurveyListScreen(
+                onNavigateToSurvey = { surveyId ->
+                    navHostController.navigate("survey_detail/$surveyId")
+                },
+                onNavigateToMain = {
+                    navHostController.navigate(Screen.Main)
+                }
             )
         }
     }
