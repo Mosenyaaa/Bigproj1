@@ -127,10 +127,10 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun getPatientScheduledSurveys(patientId: Int): List<ScheduledSurveyDto> {
-        val response = doctorService.getPatientScheduledSurveys(patientId)
+    suspend fun getPatientScheduledSurveys(patientId: Int, activeOnly: Boolean = true): List<ScheduledSurveyDto> {
+        val response = doctorService.getPatientScheduledSurveys(patientId, activeOnly)
         if (response.isSuccessful) {
-            return response.body()?.scheduledSurveys ?: emptyList()
+            return response.body() ?: emptyList()
         } else {
             val errorMessage = ErrorHandler.parseError(response)
             throw Exception(errorMessage)

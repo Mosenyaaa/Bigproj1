@@ -33,16 +33,39 @@ interface SurveyManagementService {
         @Query("query") query: String? = null,
         @Query("st") start: Int? = null,
         @Query("fn") finish: Int? = null,
-        @Query("limit") limit: Int? = null
+        @Query("limit") limit: Int? = null,
+        @Query("is_public") isPublic: Boolean? = true // Добавить этот параметр
     ): Response<List<QuestionResponseDto>>
 
-    @POST("/api/doctor/add_question")
-    suspend fun addQuestion(@Body request: CreateQuestionRequestDto): Response<QuestionResponseDto>
+    @Serializable
+    data class GetQuestionResponse(
+        @SerialName("question") val question: QuestionResponseDto?
+    )
 
+    @GET("/api/doctor/get_question")
+    suspend fun getQuestion(
+        @Query("question_id") questionId: Int
+    ): Response<GetQuestionResponse>
+
+    @FormUrlEncoded
+    @POST("/api/doctor/add_question")
+    suspend fun addQuestion(
+        @Field("text") text: String? = null,
+        @Field("is_public") isPublic: Boolean = true,
+        @Field("answer_options") answerOptions: String? = null, // JSON строка
+        @Field("voice_filename") voiceFilename: String? = null,
+        @Field("picture_filename") pictureFilename: String? = null
+    ): Response<QuestionResponseDto>
+
+    @FormUrlEncoded
     @PUT("/api/doctor/update_question")
     suspend fun updateQuestion(
         @Query("question_id") questionId: Int,
-        @Body request: UpdateQuestionRequestDto
+        @Field("text") text: String? = null,
+        @Field("is_public") isPublic: Boolean? = null,
+        @Field("answer_options") answerOptions: String? = null, // JSON строка
+        @Field("voice_filename") voiceFilename: String? = null,
+        @Field("picture_filename") pictureFilename: String? = null
     ): Response<QuestionResponseDto>
 
     @DELETE("/api/doctor/delete_question")
@@ -81,14 +104,14 @@ data class QuestionResponseDto(
     @SerialName("id") val id: Int,
     @SerialName("long_id") val longId: String? = null,
     @SerialName("slug") val slug: String? = null,
-    @SerialName("creation_dt") val creationDate: String,
-    @SerialName("type") val type: String,
-    @SerialName("text") val text: String?,
+    @SerialName("creation_dt") val creationDate: String? = null,
+    @SerialName("type") val type: String? = null,
+    @SerialName("text") val text: String? = null,
     @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
     @SerialName("picture_filename") val pictureFilename: String? = null,
-    @SerialName("is_public") val isPublic: Boolean,
-    @SerialName("user_id") val userId: Int,
+    @SerialName("is_public") val isPublic: Boolean? = null,
+    @SerialName("user_id") val userId: Int? = null,
     @SerialName("extra_data") val extraData: Map<String, String>? = null
 )
 

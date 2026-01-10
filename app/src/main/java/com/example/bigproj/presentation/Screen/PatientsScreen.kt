@@ -1,36 +1,51 @@
 // presentation/Screen/PatientScreen.kt
 package com.example.bigproj.presentation.Screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.bigproj.data.model.PatientDto
 import com.example.bigproj.presentation.Screen.state.DoctorScreenEvent
 import com.example.bigproj.presentation.Screen.state.DoctorView
 import com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel
+import com.example.bigproj.presentation.navigation.Screen
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
-fun PatientsScreen() {
+fun PatientsScreen(
+    navController: NavHostController? = null
+) {
+    val context = LocalContext.current
     val viewModel = viewModel<DoctorViewModel>()
     val state = viewModel.state
 
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
+        viewModel.setupDependencies(context)
         viewModel.onEvent(DoctorScreenEvent.LoadPatients)
     }
 
@@ -48,49 +63,70 @@ fun PatientsScreen() {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        when (state.currentView) {
-            DoctorView.PATIENTS_LIST -> {
-                // ИСПРАВЛЕНО: вызываем SeparatePatientsListContent вместо PatientsListContent
-                SeparatePatientsListContent(
-                    state = state,
-                    onPatientClick = { patient ->
-                        viewModel.onEvent(DoctorScreenEvent.PatientSelected(patient.id))
-                        viewModel.onEvent(DoctorScreenEvent.LoadPatientAttempts(patient.id))
-                    },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-            DoctorView.PATIENT_ATTEMPTS -> {
-                // ИСПРАВЛЕНО: передаем правильные параметры
-                PatientAttemptsScreen(
-                    patientId = state.selectedPatientId ?: 0,
-                    patientName = state.patients.find { it.id == state.selectedPatientId }?.fullName,
-                    attempts = state.patientAttempts.firstOrNull()?.attempts ?: emptyList(),
-                    onBackClick = { viewModel.onEvent(DoctorScreenEvent.NavigateBack) }
-                )
-            }
-        }
+        SeparatePatientsListContent(
+            state = state,
+            onPatientClick = { patient ->
+                navController?.navigate("patient_details/${patient.id}")
+            },
+            modifier = Modifier.padding(paddingValues)
+        )
     }
 }
 
-// ИСПРАВЛЕНО: переименовали функцию
 @Composable
 fun SeparatePatientsListContent(
     state: com.example.bigproj.presentation.Screen.state.DoctorScreenState,
     onPatientClick: (PatientDto) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredPatients = if (searchQuery.isBlank()) {
+        state.patients
+    } else {
+        state.patients.filter { patient ->
+            patient.fullName?.contains(searchQuery, ignoreCase = true) == true ||
+                    patient.email.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Пациенты",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1A1A1A),
-            modifier = Modifier.padding(bottom = 16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Мои пациенты",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A1A1A)
+            )
+            if (!state.isLoading && state.patients.isNotEmpty()) {
+                Text(
+                    text = "(${state.patients.size})",
+                    fontSize = 18.sp,
+                    color = Color(0xFF666666),
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Поиск по имени или email") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
         )
 
         if (state.isLoading) {
@@ -100,20 +136,20 @@ fun SeparatePatientsListContent(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (state.patients.isEmpty()) {
+        } else if (filteredPatients.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Пациенты не найдены",
+                    text = if (searchQuery.isNotBlank()) "Пациенты не найдены" else "Пациенты не найдены",
                     fontSize = 16.sp,
                     color = Color(0xFF666666)
                 )
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(state.patients) { patient ->
+                items(filteredPatients) { patient ->
                     SeparatePatientCard(
                         patient = patient,
                         onPatientClick = onPatientClick
@@ -124,7 +160,6 @@ fun SeparatePatientsListContent(
     }
 }
 
-// ИСПРАВЛЕНО: переименовали функцию
 @Composable
 fun SeparatePatientCard(
     patient: PatientDto,
@@ -138,27 +173,51 @@ fun SeparatePatientCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = patient.fullName ?: "Не указано",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A1A1A)
-            )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Аватар с инициалами
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2196F3)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = getInitials(patient.fullName ?: patient.email),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
 
-            Text(
-                text = patient.email,
-                fontSize = 14.sp,
-                color = Color(0xFF666666),
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Text(
-                text = if (patient.isVerified) "✓ Подтвержден" else "⏳ Ожидает подтверждения",
-                fontSize = 12.sp,
-                color = if (patient.isVerified) Color(0xFF00C853) else Color(0xFFFF9800),
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = patient.fullName ?: "Не указано",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A1A)
+                )
+
+                Text(
+                    text = patient.email,
+                    fontSize = 14.sp,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                // Исправленное отображение даты (убрали статус подтверждения)
+                Text(
+                    text = "Зарегистрирован с ${formatDate(patient.creationDate)}",
+                    fontSize = 12.sp,
+                    color = Color(0xFF888888),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }

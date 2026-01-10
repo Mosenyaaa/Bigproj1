@@ -2,17 +2,24 @@
 package com.example.bigproj.domain.repository
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.example.bigproj.data.RetrofitClient
 import com.example.bigproj.data.api.QuestionResponseDto
 import com.example.bigproj.data.api.SurveyWithQuestionsDto
 import com.example.bigproj.data.model.*
 import com.example.bigproj.domain.utils.ErrorHandler
+import kotlinx.serialization.json.Json
 
 class SurveyManagementRepository(private val context: Context) {
 
     private val tokenManager = TokenManager(context)
     private val surveyManagementService by lazy {
         RetrofitClient.createSurveyManagementService(tokenManager)
+    }
+
+    // SharedPreferences для хранения удаленных вопросов
+    private val prefs: SharedPreferences by lazy {
+        context.getSharedPreferences("deleted_questions", Context.MODE_PRIVATE)
     }
 
     // Опросы
@@ -57,9 +64,43 @@ class SurveyManagementRepository(private val context: Context) {
         finish: Int? = null,
         limit: Int? = null
     ): List<QuestionResponseDto> {
+        println("🔄 Загружаем доступные вопросы...")
         val response = surveyManagementService.getAvailableQuestions(query, start, finish, limit)
+
         if (response.isSuccessful) {
-            return response.body() ?: emptyList()
+            val allQuestions = response.body() ?: emptyList()
+
+            // Получаем ID локально удаленных вопросов
+            val deletedIds = getDeletedQuestionIds()
+
+            // Фильтруем вопросы - убираем те, что удалены локально
+            val activeQuestions = allQuestions.filter { question ->
+                !deletedIds.contains(question.id)
+            }
+
+            println("📊 ФИЛЬТРАЦИЯ ВОПРОСОВ:")
+            println("   Всего от сервера: ${allQuestions.size}")
+            println("   Локально удалено: ${deletedIds.size}")
+            println("   Показываем: ${activeQuestions.size}")
+
+            if (deletedIds.isNotEmpty()) {
+                println("   ID удаленных вопросов: $deletedIds")
+            }
+
+            return activeQuestions
+        } else {
+            val errorMessage = ErrorHandler.parseError(response)
+            println("❌ Ошибка загрузки вопросов: $errorMessage")
+            throw Exception(errorMessage)
+        }
+    }
+
+    suspend fun getQuestion(questionId: Int): QuestionResponseDto {
+        val response = surveyManagementService.getQuestion(questionId)
+        if (response.isSuccessful) {
+            val wrapper = response.body()
+            val question = wrapper?.question
+            return question ?: throw Exception("Вопрос не найден")
         } else {
             val errorMessage = ErrorHandler.parseError(response)
             throw Exception(errorMessage)
@@ -67,7 +108,20 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     suspend fun addQuestion(request: CreateQuestionRequestDto): QuestionResponseDto {
-        val response = surveyManagementService.addQuestion(request)
+        // Преобразуем список в JSON строку
+        val answerOptionsJson = if (request.answerOptions != null && request.answerOptions.isNotEmpty()) {
+            Json.encodeToString(request.answerOptions)
+        } else {
+            null
+        }
+
+        val response = surveyManagementService.addQuestion(
+            text = request.text,
+            isPublic = request.isPublic,
+            answerOptions = answerOptionsJson,
+            voiceFilename = request.voiceFilename,
+            pictureFilename = request.pictureFilename
+        )
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
         } else {
@@ -77,7 +131,21 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     suspend fun updateQuestion(questionId: Int, request: UpdateQuestionRequestDto): QuestionResponseDto {
-        val response = surveyManagementService.updateQuestion(questionId, request)
+        // Преобразуем список в JSON строку
+        val answerOptionsJson = if (request.answerOptions != null && request.answerOptions.isNotEmpty()) {
+            Json.encodeToString(request.answerOptions)
+        } else {
+            null
+        }
+
+        val response = surveyManagementService.updateQuestion(
+            questionId = questionId,
+            text = request.text,
+            isPublic = request.isPublic,
+            answerOptions = answerOptionsJson,
+            voiceFilename = request.voiceFilename,
+            pictureFilename = request.pictureFilename
+        )
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
         } else {
@@ -87,10 +155,17 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     suspend fun deleteQuestion(questionId: Int) {
+        println("🗑️ Удаляем вопрос ID: $questionId")
         val response = surveyManagementService.deleteQuestion(questionId)
+
         if (!response.isSuccessful) {
             val errorMessage = ErrorHandler.parseError(response)
+            println("❌ Ошибка удаления вопроса: $errorMessage")
             throw Exception(errorMessage)
+        } else {
+            // Сохраняем ID удаленного вопроса локально
+            saveDeletedQuestionId(questionId)
+            println("✅ Вопрос $questionId удален на сервере и сохранен локально")
         }
     }
 
@@ -200,6 +275,26 @@ class SurveyManagementRepository(private val context: Context) {
         }
 
         return ValidationResult.Success
+    }
+
+    // --- МЕТОДЫ ДЛЯ ЛОКАЛЬНОГО ХРАНЕНИЯ УДАЛЕННЫХ ВОПРОСОВ ---
+
+    private fun saveDeletedQuestionId(questionId: Int) {
+        val currentIds = prefs.getStringSet("deleted_ids", mutableSetOf()) ?: mutableSetOf()
+        val updatedIds = currentIds.toMutableSet()
+        updatedIds.add(questionId.toString())
+        prefs.edit().putStringSet("deleted_ids", updatedIds).apply()
+    }
+
+    private fun getDeletedQuestionIds(): Set<Int> {
+        val stringIds = prefs.getStringSet("deleted_ids", emptySet()) ?: emptySet()
+        return stringIds.mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    // Метод для очистки локального списка (если нужно)
+    fun clearDeletedQuestionIds() {
+        prefs.edit().remove("deleted_ids").apply()
+        println("🧹 Очищен локальный список удаленных вопросов")
     }
 }
 

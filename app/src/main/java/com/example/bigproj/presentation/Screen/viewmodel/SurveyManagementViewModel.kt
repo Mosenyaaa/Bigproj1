@@ -338,30 +338,60 @@ class SurveyManagementViewModel : ViewModel() {
                     )
                 )
 
+                println("✅ Опрос создан: ID=${survey.id}, Title='${survey.title}'")
+
                 // 2. Создаем вопросы и привязываем их к опросу
                 for ((index, question) in state.questions.withIndex()) {
-                    val questionRequest =
-                        com.example.bigproj.data.model.CreateQuestionRequestDto(
-                            text = question.text,
-                            answerOptions = question.answerOptions,
-                            voiceFilename = question.voiceFilename,
-                            pictureFilename = question.pictureFilename,
-                            isPublic = true
-                        )
+                    try {
+                        println("📝 Создаем вопрос ${index + 1}/${state.questions.size}")
 
-                    val createdQuestion = repository.addQuestion(questionRequest)
+                        // Определяем тип вопроса на основе его свойств
+                        val hasVoice = !question.voiceFilename.isNullOrBlank()
+                        val hasPicture = !question.pictureFilename.isNullOrBlank()
 
-                    // Привязываем вопрос к опросу
-                    val addToSurveyRequest =
-                        com.example.bigproj.data.model.AddQuestionToSurveyRequestDto(
-                        surveyId = survey.id,
-                            questionId = createdQuestion.id,
-                            orderIndex = index
-                        )
+                        println("   Текст: '${question.text}'")
+                        println("   Голос: ${question.voiceFilename}")
+                        println("   Изображение: ${question.pictureFilename}")
+                        println("   Варианты ответов: ${question.answerOptions?.size ?: 0}")
 
-                    repository.addQuestionToSurvey(addToSurveyRequest)
+                        // Создаем запрос на создание вопроса
+                        val questionRequest =
+                            com.example.bigproj.data.model.CreateQuestionRequestDto(
+                                text = question.text.takeIf { it.isNotBlank() },
+                                answerOptions = question.answerOptions,
+                                voiceFilename = question.voiceFilename,
+                                pictureFilename = question.pictureFilename,
+                                isPublic = true
+                            )
+
+                        println("   Отправляем запрос на создание вопроса...")
+                        val createdQuestion = repository.addQuestion(questionRequest)
+                        println("   ✅ Вопрос создан: ID=${createdQuestion.id}")
+
+                        // Проверяем, что ID вопроса получен
+                        if (createdQuestion.id > 0) {
+                            // Привязываем вопрос к опросу
+                            val addToSurveyRequest =
+                                com.example.bigproj.data.model.AddQuestionToSurveyRequestDto(
+                                    surveyId = survey.id,
+                                    questionId = createdQuestion.id,
+                                    orderIndex = index
+                                )
+
+                            println("   Привязываем вопрос ${createdQuestion.id} к опросу ${survey.id}...")
+                            val updatedSurvey = repository.addQuestionToSurvey(addToSurveyRequest)
+                            println("   ✅ Вопрос привязан. Вопросов в опросе: ${updatedSurvey.questions.size}")
+                        } else {
+                            println("❌ Ошибка: не получен ID созданного вопроса")
+                            throw Exception("Не удалось создать вопрос: не получен ID")
+                        }
+                    } catch (e: Exception) {
+                        println("❌ Ошибка при создании вопроса ${index + 1}: ${e.message}")
+                        throw Exception("Ошибка при создании вопроса ${index + 1}: ${e.message}", e)
+                    }
                 }
 
+                println("🎉 Опрос успешно создан со всеми вопросами")
                 state = state.copy(
                     isLoading = false,
                     isSuccess = true,
@@ -369,6 +399,8 @@ class SurveyManagementViewModel : ViewModel() {
                 )
 
             } catch (e: Exception) {
+                println("❌ Ошибка сохранения опроса: ${e.message}")
+                println("❌ Stack trace: ${e.stackTraceToString()}")
                 state = state.copy(
                     isLoading = false,
                     errorMessage = "Ошибка сохранения: ${e.message}"

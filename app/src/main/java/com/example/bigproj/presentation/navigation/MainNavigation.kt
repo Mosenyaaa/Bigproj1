@@ -190,6 +190,30 @@ fun MainNav(
             )
         }
 
+        composable("patient_details/{patientId}") { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getString("patientId")?.toIntOrNull() ?: 0
+            com.example.bigproj.presentation.Screen.PatientDetailsScreen(
+                patientId = patientId,
+                patient = null, // Will be loaded from state
+                onBackClick = { navHostController.popBackStack() }
+            )
+        }
+
+        // Constructor screens
+        composable("create_question") {
+            com.example.bigproj.presentation.Screen.CreateQuestionScreen(
+                navController = navHostController
+            )
+        }
+
+        composable("edit_question/{questionId}") { backStackEntry ->
+            val questionId = backStackEntry.arguments?.getString("questionId")?.toIntOrNull() ?: 0
+            com.example.bigproj.presentation.Screen.EditQuestionScreen(
+                questionId = questionId,
+                navController = navHostController
+            )
+        }
+
         composable<Screen.PatientDoctors> {
             PatientDoctorsScreen()
         }

@@ -20,8 +20,9 @@ interface DoctorService {
 
     @GET("/api/doctor/patient_scheduled_surveys")
     suspend fun getPatientScheduledSurveys(
-        @Query("patient_id") patientId: Int
-    ): Response<PatientScheduledSurveysResponse>
+        @Query("patient_id") patientId: Int,
+        @Query("active_only") activeOnly: Boolean = true
+    ): Response<List<ScheduledSurveyDto>>
 
     @POST("/api/doctor/schedule_survey")
     suspend fun scheduleSurvey(

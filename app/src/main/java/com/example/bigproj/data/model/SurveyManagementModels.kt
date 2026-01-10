@@ -41,21 +41,19 @@ data class SurveyManagementResponseDto(
 @Serializable
 data class CreateQuestionRequestDto(
     @SerialName("text") val text: String? = null,
-    @SerialName("type") val type: String? = null, // Система определяет автоматически
+    @SerialName("is_public") val isPublic: Boolean = true,
     @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
-    @SerialName("picture_filename") val pictureFilename: String? = null,
-    @SerialName("is_public") val isPublic: Boolean = true
+    @SerialName("picture_filename") val pictureFilename: String? = null
 )
 
 @Serializable
 data class UpdateQuestionRequestDto(
     @SerialName("text") val text: String? = null,
-    @SerialName("type") val type: String? = null,
+    @SerialName("is_public") val isPublic: Boolean? = null,
     @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
-    @SerialName("picture_filename") val pictureFilename: String? = null,
-    @SerialName("is_public") val isPublic: Boolean? = null
+    @SerialName("picture_filename") val pictureFilename: String? = null
 )
 
 @Serializable

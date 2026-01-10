@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +33,8 @@ import com.example.bigproj.presentation.Screen.state.DoctorScreenEvent
 import com.example.bigproj.presentation.Screen.state.DoctorScreenState
 import com.example.bigproj.presentation.Screen.viewmodel.DoctorViewModel
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 enum class DoctorTab {
     SURVEYS,
@@ -96,7 +100,6 @@ fun DoctorsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // ИСПРАВЛЕНО: Используем TabRow вместо PrimaryTabRow
             TabRow(
                 selectedTabIndex = when (selectedTab) {
                     DoctorTab.SURVEYS -> 0
@@ -135,8 +138,9 @@ fun DoctorsScreen(
                 DoctorTab.PATIENTS -> {
                     DoctorsPatientsListContent(
                         state = viewModel.state,
+                        navController = navController,
                         onPatientClick = { patient: PatientDto ->
-                            viewModel.onEvent(DoctorScreenEvent.LoadPatientAttempts(patient.id))
+                            navController.navigate("patient_details/${patient.id}")
                         },
                         onScheduleClick = { patientId ->
                             navController.navigate("schedule_survey/$patientId")
@@ -230,37 +234,31 @@ fun DoctorsSurveysContent(
 @Composable
 fun DoctorsPatientsListContent(
     state: DoctorScreenState,
+    navController: NavHostController? = null,
     onPatientClick: (PatientDto) -> Unit,
     onScheduleClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "Мои пациенты",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1A1A1A),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        if (state.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.patients.isEmpty()) {
-            EmptyDoctorsPatientsState()
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(state.patients) { patient ->
-                    DoctorsPatientCard(
-                        patient = patient,
-                        onClick = { onPatientClick(patient) },
-                        onSchedule = { onScheduleClick(patient.id) }
-                    )
-                }
+    if (state.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (state.patients.isEmpty()) {
+        EmptyDoctorsPatientsState()
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(state.patients) { patient ->
+                DoctorsPatientCard(
+                    patient = patient,
+                    onClick = { onPatientClick(patient) },
+                    onSchedule = { onScheduleClick(patient.id) }
+                )
             }
         }
     }
@@ -316,69 +314,124 @@ fun DoctorsPatientCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = patient.fullName ?: "Без имени",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A)
-                    )
-                    Text(
-                        text = patient.email,
-                        fontSize = 14.sp,
-                        color = Color(0xFF666666)
-                    )
-                }
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Аватар с инициалами
+            AvatarWithInitials(patient = patient)
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            if (patient.isActive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = patient.fullName ?: "Без имени",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A1A)
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (patient.isActive) "Активен" else "Неактивен",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (patient.isActive) Color(0xFF2E7D32) else Color(0xFFC62828)
-                    )
+                        Text(
+                            text = patient.email,
+                            fontSize = 14.sp,
+                            color = Color(0xFF666666)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (patient.isActive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (patient.isActive) "Активен" else "Неактивен",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (patient.isActive) Color(0xFF2E7D32) else Color(0xFFC62828)
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("ID: ${patient.id}", fontSize = 12.sp, color = Color(0xFF888888))
-                Spacer(modifier = Modifier.width(16.dp))
+                // Исправленное отображение даты
                 Text(
-                    text = "Зарегистрирован: ${patient.creationDate.take(10)}",
+                    text = "Зарегистрирован с ${formatDate(patient.creationDate)}",
                     fontSize = 12.sp,
-                    color = Color(0xFF888888)
+                    color = Color(0xFF888888),
+                    modifier = Modifier.padding(top = 8.dp)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = onSchedule,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Назначить опрос", fontSize = 12.sp)
+                    Button(
+                        onClick = onSchedule,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Назначить опрос", fontSize = 12.sp)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AvatarWithInitials(patient: PatientDto, size: Dp = 48.dp) {
+    val initials = getInitials(patient.fullName ?: patient.email)
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Color(0xFF2196F3)), // Синий цвет фона
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initials,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+    }
+}
+
+fun getInitials(name: String): String {
+    return if (name.isNotBlank()) {
+        val parts = name.trim().split("\\s+".toRegex())
+        when (parts.size) {
+            1 -> parts[0].take(2).uppercase()
+            else -> parts[0].take(1).uppercase() + parts.last().take(1).uppercase()
+        }
+    } else {
+        "??"
+    }
+}
+
+fun formatDate(dateString: String): String {
+    return try {
+        val inputFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val outputFormatter = SimpleDateFormat("dd MM yyyy", Locale.getDefault())
+
+        val dateOnly = dateString.take(10)
+        val date = inputFormatter.parse(dateOnly)
+        outputFormatter.format(date)
+    } catch (e: Exception) {
+        dateString.take(10)
     }
 }
