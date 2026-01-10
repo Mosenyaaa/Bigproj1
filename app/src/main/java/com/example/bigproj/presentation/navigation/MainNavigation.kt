@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.example.bigproj.presentation.Screen.CreateAppointmentScreen
 import com.example.bigproj.presentation.Screen.CreateSurveyScreen
 import com.example.bigproj.presentation.Screen.DoctorsScreen
 import com.example.bigproj.presentation.Screen.EditSurveyScreen
@@ -214,6 +215,13 @@ fun MainNav(
             )
         }
 
+        // Appointments screens
+        composable("create_appointment") {
+            com.example.bigproj.presentation.Screen.CreateAppointmentScreen(
+                navController = navHostController
+            )
+        }
+
         composable<Screen.PatientDoctors> {
             PatientDoctorsScreen()
         }
@@ -226,6 +234,12 @@ fun MainNav(
                 onNavigateToMain = {
                     navHostController.navigate(Screen.Main)
                 }
+            )
+        }
+
+        composable("create_appointment") {
+            CreateAppointmentScreen(
+                navController = navHostController
             )
         }
     }

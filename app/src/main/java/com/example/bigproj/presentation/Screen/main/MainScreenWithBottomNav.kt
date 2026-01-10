@@ -174,8 +174,10 @@ fun MainScreenWithBottomNav(
                     )
                 }
                 3 -> {
-                    // Appointments (placeholder for now)
-                    AppointmentsPlaceholderScreen()
+                    // Appointments
+                    com.example.bigproj.presentation.Screen.AppointmentsScreen(
+                        navController = navController
+                    )
                 }
                 4 -> {
                     // Profile
@@ -211,25 +213,6 @@ fun MainScreenWithBottomNav(
                     )
                 }
             }
-        }
-    }
-}
-
-// Placeholder screen for Appointments
-@Composable
-fun AppointmentsPlaceholderScreen() {
-    Scaffold { paddingValues ->
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            Text(
-                text = "Назначения\n(В разработке)",
-                fontSize = 18.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
         }
     }
 }
