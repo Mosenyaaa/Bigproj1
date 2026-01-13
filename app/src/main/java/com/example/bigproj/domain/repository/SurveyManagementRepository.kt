@@ -219,8 +219,8 @@ class SurveyManagementRepository(private val context: Context) {
         }
     }
 
-    suspend fun changeSurveyStatus(surveyId: Int, status: String): SurveyManagementResponseDto {
-        val response = surveyManagementService.changeSurveyStatus(surveyId, status)
+    suspend fun changeSurveyStatus(surveyId: Int, newStatus: String): SurveyManagementResponseDto {
+        val response = surveyManagementService.changeSurveyStatus(surveyId, newStatus)
         if (response.isSuccessful) {
             return response.body() ?: throw Exception("Пустой ответ от сервера")
         } else {

@@ -117,13 +117,9 @@ fun MainNav(
         // ЭКРАНЫ ДЛЯ КОНСТРУКТОРА ОПРОСОВ
         composable("create_survey") {
             CreateSurveyScreen(
-                onBackClick = { navHostController.popBackStack() },
+                navController = navHostController,
                 onSurveyCreated = { surveyId ->
                     println("✅ Опрос создан: $surveyId")
-                    navHostController.popBackStack()
-                },
-                onEditQuestion = { questionIndex ->
-                    navHostController.navigate("question_editor/$questionIndex")
                 }
             )
         }
@@ -144,11 +140,7 @@ fun MainNav(
             val surveyId = backStackEntry.arguments?.getString("surveyId")?.toIntOrNull() ?: 0
             EditSurveyScreen(
                 surveyId = surveyId,
-                onBackClick = { navHostController.popBackStack() },
-                onSurveyUpdated = { navHostController.popBackStack() },
-                onEditQuestion = { questionIndex ->
-                    navHostController.navigate("question_editor/$questionIndex")
-                }
+                navController = navHostController
             )
         }
 

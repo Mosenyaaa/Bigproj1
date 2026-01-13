@@ -298,17 +298,6 @@ fun MainScreenContent(
                 Text("🚪 Выйти")
             }
 
-            // Кнопка перехода к опросам
-            Button(
-                onClick = { onNavigateTo(Screen.SurveyList) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = primaryColor
-                )
-            ) {
-                Text("📊 Мои опросы")
-            }
 
             // Индикатор загрузки
             if (state.isLoading) {

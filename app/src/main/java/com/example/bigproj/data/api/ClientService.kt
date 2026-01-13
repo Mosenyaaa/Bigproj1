@@ -21,7 +21,6 @@ interface ClientService {
 
     @GET("/api/client/send_reset_email_verification_code_on_email")
     suspend fun sendResetEmailCode(@Query("new_email") newEmail: String): Response<SendCodeOnEmailResponseDto>
-
     @GET("/api/client/reset_email")
     suspend fun resetEmail(@Query("verification_code_value") code: String): Response<UserResponseDto>
 }

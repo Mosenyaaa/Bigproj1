@@ -157,14 +157,9 @@ fun MainScreenWithBottomNav(
                     PatientsScreen(navController = navController)
                 }
                 1 -> {
-                    // Surveys
-                    com.example.bigproj.presentation.Screen.SurveyListScreen(
-                        onNavigateToSurvey = { surveyId ->
-                            navController.navigate("survey_detail/$surveyId")
-                        },
-                        onNavigateToMain = {
-                            navController.navigate(Screen.Main)
-                        }
+                    // Surveys (Doctor Surveys)
+                    com.example.bigproj.presentation.Screen.DoctorSurveysScreen(
+                        navController = navController
                     )
                 }
                 2 -> {

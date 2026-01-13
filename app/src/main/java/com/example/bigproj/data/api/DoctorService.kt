@@ -16,7 +16,13 @@ interface DoctorService {
     ): Response<PatientAttemptsResponse>
 
     @GET("/api/doctor/my_surveys")
-    suspend fun getMySurveys(): Response<SurveyListResponseDto>
+    suspend fun getMySurveys(
+        @Query("status") status: String? = null,
+        @Query("query") query: String? = null,
+        @Query("st") st: Int = 0,
+        @Query("fn") fn: Int? = null,
+        @Query("limit") limit: Int? = null
+    ): Response<SurveyListResponseDto>
 
     @GET("/api/doctor/patient_scheduled_surveys")
     suspend fun getPatientScheduledSurveys(

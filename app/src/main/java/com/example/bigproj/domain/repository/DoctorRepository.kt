@@ -147,11 +147,23 @@ class DoctorRepository(private val context: Context) {
         }
     }
 
-    suspend fun getDoctorSurveys(): SurveyListResponseDto {
-        println("📋 Получаем опросы текущего врача")
+    suspend fun getDoctorSurveys(
+        status: String? = null,
+        query: String? = null,
+        start: Int = 0,
+        finish: Int? = null,
+        limit: Int? = null
+    ): SurveyListResponseDto {
+        println("📋 Получаем опросы текущего врача: status=$status, query=$query, st=$start, limit=$limit")
 
         try {
-            val response = doctorService.getMySurveys()
+            val response = doctorService.getMySurveys(
+                status = status,
+                query = query,
+                st = start,
+                fn = finish,
+                limit = limit
+            )
 
             println("📡 Ответ my_surveys: код=${response.code()}, успешно=${response.isSuccessful}")
             println("📡 Тело: ${response.body()}")
@@ -160,7 +172,7 @@ class DoctorRepository(private val context: Context) {
                 val surveys = response.body()
                 println("✅ Опросы врача: ${surveys?.surveys?.size ?: 0}")
                 surveys?.surveys?.forEach { survey ->
-                    println("   - ID: ${survey.id}, Title: ${survey.title}, UserID: ${survey.userId}")
+                    println("   - ID: ${survey.id}, Title: ${survey.title}, Status: ${survey.status}, UserID: ${survey.userId}")
                 }
                 return surveys ?: throw Exception("Пустой ответ от сервера")
             } else {

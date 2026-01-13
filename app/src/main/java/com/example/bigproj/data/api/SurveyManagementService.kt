@@ -95,7 +95,7 @@ interface SurveyManagementService {
     @PUT("/api/doctor/change_survey_status")
     suspend fun changeSurveyStatus(
         @Query("survey_id") surveyId: Int,
-        @Query("status") status: String
+        @Query("new_status") newStatus: String
     ): Response<SurveyManagementResponseDto>
 }
 
@@ -129,6 +129,8 @@ data class QuestionInSurveyDto(
     @SerialName("order_index") val orderIndex: Int,
     @SerialName("question_text") val questionText: String?,
     @SerialName("question_type") val questionType: String,
+    @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
-    @SerialName("picture_filename") val pictureFilename: String? = null
+    @SerialName("picture_filename") val pictureFilename: String? = null,
+    @SerialName("extra_data") val extraData: Map<String, String>? = null
 )
