@@ -20,10 +20,10 @@ sealed class QuestionEditorEvent {
 
 enum class QuestionDisplayType(val displayName: String, val icon: String, val apiType: String) {
     TEXT("Текстовый", "📝", "text"),
-    SINGLE_CHOICE("Один вариант", "☑️", "text"), // API type will be "text" with answer_options
+    SINGLE_CHOICE("Один выбор", "☑️", "text"), // API type will be "text" with answer_options
     MULTIPLE_CHOICE("Несколько вариантов", "☑️☑️", "text"), // API type will be "text" with answer_options
     SCALE("Шкала", "📊", "text"), // API type will be "text" with scale description
-    VOICE("Голосовой", "🔊", "voice"),
+    VOICE("Голосовой", "🎤", "voice"),
     PHOTO("Фото", "🖼️", "picture")
 }
 

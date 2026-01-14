@@ -158,8 +158,18 @@ fun QuestionEditorContent(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 minLines = 2,
-                maxLines = 4
+                maxLines = 4,
+                // ⚠️ Добавляем валидацию
+                isError = state.text.isBlank() && state.displayType != QuestionDisplayType.VOICE && state.displayType != QuestionDisplayType.PHOTO
             )
+            if (state.text.isBlank() && state.displayType != QuestionDisplayType.VOICE && state.displayType != QuestionDisplayType.PHOTO) {
+                Text(
+                    text = "Текст вопроса обязателен",
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
 
         // Description field
@@ -286,9 +296,10 @@ fun QuestionEditorContent(
             Button(
                 onClick = { onEvent(QuestionEditorEvent.SaveQuestion) },
                 modifier = Modifier.weight(1f),
-                enabled = !state.isLoading && (state.text.isNotBlank() || 
-                    state.displayType == QuestionDisplayType.VOICE || 
-                    state.displayType == QuestionDisplayType.PHOTO),
+                enabled = !state.isLoading &&
+                        (state.text.isNotBlank() ||
+                                state.displayType == QuestionDisplayType.VOICE ||
+                                state.displayType == QuestionDisplayType.PHOTO),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary

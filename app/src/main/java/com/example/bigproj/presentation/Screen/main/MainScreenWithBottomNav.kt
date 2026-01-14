@@ -1,27 +1,14 @@
 // presentation/Screen/main/MainScreenWithBottomNav.kt
 package com.example.bigproj.presentation.Screen.main
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,36 +16,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.bigproj.presentation.Screen.PatientDoctorsScreen
-import com.example.bigproj.presentation.Screen.PatientsScreen
 import com.example.bigproj.presentation.Screen.state.MainScreenEvent
 import com.example.bigproj.presentation.Screen.viewmodel.MainScreenViewModel
 import com.example.bigproj.presentation.navigation.Screen
-
-sealed class BottomNavItem(
-    val route: String,
-    val title: String,
-    val icon: ImageVector
-) {
-    // Patient items
-    object Surveys : BottomNavItem("surveys", "Опросы", Icons.Filled.QuestionAnswer)
-    object Doctors : BottomNavItem("doctors", "Врачи", Icons.Filled.MedicalServices)
-    object Profile : BottomNavItem("profile", "Профиль", Icons.Filled.Person)
-
-    // Doctor items
-    object Patients : BottomNavItem("patients", "Пациенты", Icons.Filled.Group)
-    object DoctorSurveys : BottomNavItem("doctor_surveys", "Опросы", Icons.Filled.Assignment)
-    object Constructor : BottomNavItem("constructor", "Конструктор", Icons.Filled.Build)
-    object Appointments : BottomNavItem("appointments", "Назначения", Icons.Filled.CalendarToday)
-    object DoctorProfile : BottomNavItem("doctor_profile", "Профиль", Icons.Filled.AccountCircle)
-}
 
 @Composable
 fun MainScreenWithBottomNav(
@@ -78,22 +48,22 @@ fun MainScreenWithBottomNav(
 
     // Different nav items for doctors and patients
     val patientNavItems = listOf(
-        BottomNavItem.Surveys,
-        BottomNavItem.Doctors,
-        BottomNavItem.Profile
+        NavigationItem.Surveys,
+        NavigationItem.Doctors,
+        NavigationItem.Profile
     )
 
     val doctorNavItems = listOf(
-        BottomNavItem.Patients,
-        BottomNavItem.DoctorSurveys,
-        BottomNavItem.Constructor,
-        BottomNavItem.Appointments,
-        BottomNavItem.DoctorProfile
+        NavigationItem.Patients,
+        NavigationItem.DoctorSurveys,
+        NavigationItem.Constructor,
+        NavigationItem.Appointments,
+        NavigationItem.DoctorProfile
     )
 
     val bottomNavItems = if (isDoctor) doctorNavItems else patientNavItems
 
-    // Start on different tab based on role
+    // State for selected tab
     var selectedItem by rememberSaveable { mutableStateOf(0) }
 
     // Track previous role to reset tab only when role actually changes
@@ -110,14 +80,16 @@ fun MainScreenWithBottomNav(
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.White,
                 contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.height(64.dp),
-                tonalElevation = 8.dp
+                modifier = Modifier.height(70.dp),
+                tonalElevation = 0.dp,
+                windowInsets = NavigationBarDefaults.windowInsets
             ) {
                 bottomNavItems.forEachIndexed { index, item ->
                     NavigationBarItem(
                         icon = {
+                            // ИКОНКА
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.title,
@@ -125,9 +97,11 @@ fun MainScreenWithBottomNav(
                             )
                         },
                         label = {
+                            // НАЗВАНИЕ ПОД ИКОНКОЙ
                             Text(
                                 text = item.title,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
+                                fontWeight = if (selectedItem == index) FontWeight.SemiBold else FontWeight.Normal,
                                 maxLines = 1
                             )
                         },
@@ -136,58 +110,35 @@ fun MainScreenWithBottomNav(
                             selectedItem = index
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                            selectedIconColor = Color(0xFF006FFD),
+                            unselectedIconColor = Color(0xFF666666),
+                            selectedTextColor = Color(0xFF006FFD),
+                            unselectedTextColor = Color(0xFF666666),
+                            indicatorColor = Color.Transparent
                         ),
-                        alwaysShowLabel = true
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
         }
     ) { paddingValues ->
-        // Show different screens based on role and selected tab
-        if (isDoctor) {
-            // Doctor navigation
-            when (selectedItem) {
-                0 -> {
-                    // Patients - index 0 for doctors
-                    PatientsScreen(navController = navController)
+        // Показать разные экраны в зависимости от роли и выбранной вкладки
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isDoctor) {
+                when (selectedItem) {
+                    0 -> com.example.bigproj.presentation.Screen.PatientsScreen(navController = navController)
+                    1 -> com.example.bigproj.presentation.Screen.DoctorSurveysScreen(navController = navController)
+                    2 -> com.example.bigproj.presentation.Screen.ConstructorScreen(navController = navController)
+                    3 -> com.example.bigproj.presentation.Screen.AppointmentsScreen(navController = navController)
+                    4 -> MainScreen(onNavigateTo = onNavigateTo, navController = navController)
                 }
-                1 -> {
-                    // Surveys (Doctor Surveys)
-                    com.example.bigproj.presentation.Screen.DoctorSurveysScreen(
-                        navController = navController
-                    )
-                }
-                2 -> {
-                    // Constructor (Questions Constructor)
-                    com.example.bigproj.presentation.Screen.ConstructorScreen(
-                        navController = navController
-                    )
-                }
-                3 -> {
-                    // Appointments
-                    com.example.bigproj.presentation.Screen.AppointmentsScreen(
-                        navController = navController
-                    )
-                }
-                4 -> {
-                    // Profile
-                    MainScreen(
-                        onNavigateTo = onNavigateTo,
-                        navController = navController
-                    )
-                }
-            }
-        } else {
-            // Patient navigation
-            when (selectedItem) {
-                0 -> {
-                    // Surveys - index 0 for patients
-                    com.example.bigproj.presentation.Screen.SurveyListScreen(
+            } else {
+                when (selectedItem) {
+                    0 -> com.example.bigproj.presentation.Screen.SurveyListScreen(
                         onNavigateToSurvey = { surveyId ->
                             navController.navigate("survey_detail/$surveyId")
                         },
@@ -195,19 +146,29 @@ fun MainScreenWithBottomNav(
                             navController.navigate(Screen.Main)
                         }
                     )
-                }
-                1 -> {
-                    // Doctors
-                    PatientDoctorsScreen()
-                }
-                2 -> {
-                    // Profile
-                    MainScreen(
-                        onNavigateTo = onNavigateTo,
-                        navController = navController
-                    )
+                    1 -> PatientDoctorsScreen()
+                    2 -> MainScreen(onNavigateTo = onNavigateTo, navController = navController)
                 }
             }
         }
     }
+}
+
+// Объекты для навигации (новые чтобы избежать конфликта)
+sealed class NavigationItem(
+    val route: String,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    // Patient items
+    object Surveys : NavigationItem("surveys", "Опросы", Icons.Filled.QuestionAnswer)
+    object Doctors : NavigationItem("doctors", "Врачи", Icons.Filled.MedicalServices)
+    object Profile : NavigationItem("profile", "Профиль", Icons.Filled.Person)
+
+    // Doctor items
+    object Patients : NavigationItem("patients", "Пациенты", Icons.Filled.Group)
+    object DoctorSurveys : NavigationItem("doctor_surveys", "Опросы", Icons.Filled.Assignment)
+    object Constructor : NavigationItem("constructor", "Конструктор", Icons.Filled.Build)
+    object Appointments : NavigationItem("appointments", "Назначения", Icons.Filled.CalendarToday)
+    object DoctorProfile : NavigationItem("doctor_profile", "Профиль", Icons.Filled.AccountCircle)
 }

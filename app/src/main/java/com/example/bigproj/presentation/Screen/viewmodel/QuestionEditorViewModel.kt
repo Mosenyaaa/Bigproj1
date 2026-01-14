@@ -33,32 +33,45 @@ class QuestionEditorViewModel : ViewModel() {
         println("   text: ${question.text}")
         println("   type: ${question.type}")
         println("   answerOptions: ${question.answerOptions}")
-        println("   voiceFilename: ${question.voiceFilename}")
-        println("   pictureFilename: ${question.pictureFilename}")
-        println("   extraData: ${question.extraData}")
-        // Извлекаем текст без маркера MULTIPLE_CHOICE
+
+        // Определяем тип вопроса
+        val displayType = determineDisplayType(question)
+
+        // Извлекаем текст и метаданные
         val fullText = question.text ?: ""
-        val (questionText, description) = if (fullText.contains("[MULTIPLE_CHOICE]")) {
-            val parts = fullText.split("[MULTIPLE_CHOICE]")
-            (parts.first().trim()) to (if (parts.size > 1) parts[1].trim() else "")
-        } else if (fullText.contains("\n\n")) {
-            val parts = fullText.split("\n\n", limit = 2)
-            parts[0] to (if (parts.size > 1) parts[1] else "")
-        } else {
-            fullText to ""
+
+        // ⚠️ УДАЛЯЕМ МАРКЕРЫ ИЗ ТЕКСТА ДЛЯ РЕДАКТИРОВАНИЯ
+        var cleanText = fullText
+            .replace("\\[MULTIPLE_CHOICE\\]".toRegex(), "")
+            .replace("\\[SCALE:\\d+-\\d+\\]".toRegex(), "")
+            .trim()
+
+        // Удаляем описание шкалы если есть
+        if (displayType == QuestionDisplayType.SCALE) {
+            cleanText = cleanText.replace("Оцените по шкале от \\d+ до \\d+".toRegex(), "").trim()
         }
 
-        val displayType = determineDisplayType(question)
+        // Разделяем на вопрос и описание
+        val (questionText, description) = if (cleanText.contains("\n\n")) {
+            val parts = cleanText.split("\n\n", limit = 2)
+            parts[0].trim() to (if (parts.size > 1) parts[1].trim() else "")
+        } else {
+            cleanText to ""
+        }
+
         val isRequired = question.extraData?.get("is_required")?.toBoolean() ?: false
 
         // Извлекаем диапазон шкалы если это шкала
         var scaleMin = 1
         var scaleMax = 10
-        if (displayType == QuestionDisplayType.SCALE && question.answerOptions != null) {
-            val numericOptions = question.answerOptions.mapNotNull { it.toIntOrNull() }
-            if (numericOptions.isNotEmpty()) {
-                scaleMin = numericOptions.minOrNull() ?: 1
-                scaleMax = numericOptions.maxOrNull() ?: 10
+        if (displayType == QuestionDisplayType.SCALE) {
+            // Извлекаем из маркера
+            val text = question.text ?: ""
+            val scaleRegex = "\\[SCALE:(\\d+)-(\\d+)\\]".toRegex()
+            val match = scaleRegex.find(text)
+            if (match != null) {
+                scaleMin = match.groupValues[1].toIntOrNull() ?: 1
+                scaleMax = match.groupValues[2].toIntOrNull() ?: 10
             }
         }
 
@@ -74,6 +87,31 @@ class QuestionEditorViewModel : ViewModel() {
             scaleMin = scaleMin,
             scaleMax = scaleMax
         )
+
+        println("📝 Загруженные данные:")
+        println("   displayType: $displayType")
+        println("   text: '$questionText'")
+        println("   description: '$description'")
+        println("   answerOptions: ${question.answerOptions}")
+        println("   scaleMin: $scaleMin, scaleMax: $scaleMax")
+    }
+
+    private fun extractTextAndDescription(question: QuestionResponseDto, displayType: QuestionDisplayType): Pair<String, String> {
+        val fullText = question.text ?: ""
+
+        // Удаляем все маркеры для получения чистого текста
+        var cleanText = fullText
+            .replace("\\[MULTIPLE_CHOICE\\]".toRegex(), "")
+            .replace("\\[SCALE:\\d+-\\d+\\]".toRegex(), "")
+            .trim()
+
+        // Разделяем на вопрос и описание
+        return if (cleanText.contains("\n\n")) {
+            val parts = cleanText.split("\n\n", limit = 2)
+            parts[0].trim() to (if (parts.size > 1) parts[1].trim() else "")
+        } else {
+            cleanText to ""
+        }
     }
 
     private fun determineDisplayType(question: QuestionResponseDto): QuestionDisplayType {
@@ -85,19 +123,24 @@ class QuestionEditorViewModel : ViewModel() {
             else -> {
                 // Для текстовых вопросов определяем подтип
                 if (question.answerOptions != null && question.answerOptions.isNotEmpty()) {
-                    // Проверяем если это шкала (все варианты - числа)
-                    val isNumeric = question.answerOptions.all { it.toIntOrNull() != null }
-                    if (isNumeric) {
+                    // ⚠️ НОВАЯ ЛОГИКА: Определяем по is_public и характеру ответов
+                    val isPublic = question.isPublic ?: false
+
+                    // Проверяем если это шкала (все варианты - последовательные числа)
+                    val numericOptions = question.answerOptions.mapNotNull { it.toIntOrNull() }
+                    val isSequential = numericOptions.size > 1 &&
+                            numericOptions.sorted() == numericOptions &&
+                            numericOptions.zipWithNext().all { (a, b) -> b - a == 1 }
+
+                    if (isSequential && numericOptions.size >= 3) {
+                        // Если есть последовательные числа от 1 до N - это шкала
                         QuestionDisplayType.SCALE
+                    } else if (isPublic && question.answerOptions.size > 1) {
+                        // Если is_public = true и несколько вариантов - MULTIPLE_CHOICE
+                        QuestionDisplayType.MULTIPLE_CHOICE
                     } else {
-                        // Проверяем multiple_choice в extra_data или в тексте
-                        val hasMultipleMarker = question.extraData?.get("multiple_choice") == "true" ||
-                                question.text?.contains("[MULTIPLE_CHOICE]") == true
-                        if (hasMultipleMarker) {
-                            QuestionDisplayType.MULTIPLE_CHOICE
-                        } else {
-                            QuestionDisplayType.SINGLE_CHOICE
-                        }
+                        // Иначе - SINGLE_CHOICE
+                        QuestionDisplayType.SINGLE_CHOICE
                     }
                 } else {
                     QuestionDisplayType.TEXT
@@ -118,14 +161,14 @@ class QuestionEditorViewModel : ViewModel() {
                 state = state.copy(
                     displayType = event.type,
                     answerOptions = when (event.type) {
-                        QuestionDisplayType.TEXT, 
-                        QuestionDisplayType.VOICE, 
+                        QuestionDisplayType.TEXT,
+                        QuestionDisplayType.VOICE,
                         QuestionDisplayType.PHOTO -> emptyList()
                         QuestionDisplayType.SCALE -> {
                             // Generate scale options based on current range
                             (state.scaleMin..state.scaleMax).map { it.toString() }
                         }
-                        QuestionDisplayType.SINGLE_CHOICE, 
+                        QuestionDisplayType.SINGLE_CHOICE,
                         QuestionDisplayType.MULTIPLE_CHOICE -> {
                             // Keep existing options if any, otherwise empty
                             state.answerOptions
@@ -209,49 +252,39 @@ class QuestionEditorViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Готовим текст с описанием
-                var finalText = state.text.trim()
+                // Основной текст вопроса
+                val mainText = state.text.trim()
+
+                // Формируем окончательный текст (БЕЗ МАРКЕРОВ)
+                var finalText = mainText
+
+                // Добавляем описание, если есть
                 if (state.description.isNotBlank()) {
-                    finalText = if (finalText.isNotBlank()) {
-                        "$finalText\n\n${state.description.trim()}"
-                    } else {
-                        state.description.trim()
+                    val descriptionText = state.description.trim()
+                    if (descriptionText.isNotBlank()) {
+                        finalText = if (finalText.isNotBlank()) {
+                            "$finalText\n\n$descriptionText"
+                        } else {
+                            descriptionText
+                        }
                     }
                 }
 
-                // Проверяем, что текст не пустой для типов, требующих текста
-                if ((state.displayType == QuestionDisplayType.TEXT ||
-                            state.displayType == QuestionDisplayType.SINGLE_CHOICE ||
-                            state.displayType == QuestionDisplayType.MULTIPLE_CHOICE ||
-                            state.displayType == QuestionDisplayType.SCALE) && finalText.isBlank()) {
-                    state = state.copy(
-                        isLoading = false,
-                        errorMessage = "Текст вопроса обязателен для этого типа вопроса"
-                    )
-                    return@launch
-                }
-
-                // Для шкалы добавляем описание диапазона
-                if (state.displayType == QuestionDisplayType.SCALE && finalText.isNotBlank()) {
-                    val scaleDesc = "Оцените по шкале от ${state.scaleMin} до ${state.scaleMax}"
-                    finalText = "$finalText\n\n$scaleDesc"
-                }
-
-                // Для множественного выбора добавляем маркер
-                if (state.displayType == QuestionDisplayType.MULTIPLE_CHOICE) {
-                    val multipleMarker = "\n[MULTIPLE_CHOICE]"
-                    finalText = if (finalText.isNotBlank()) {
-                        "$finalText$multipleMarker"
-                    } else {
-                        multipleMarker.trim()
+                // ⚠️ ВАЖНОЕ ИЗМЕНЕНИЕ: НЕ добавляем маркеры в текст!
+                // Вместо этого будем использовать is_public или другой механизм
+                // Для совместимости со старой логикой оставляем только для SCALE
+                when (state.displayType) {
+                    QuestionDisplayType.SCALE -> {
+                        // Только для шкалы добавляем описание в текст
+                        val scaleDesc = "Оцените по шкале от ${state.scaleMin} до ${state.scaleMax}"
+                        finalText = "$finalText\n\n$scaleDesc"
+                        // НЕ добавляем [SCALE:X-Y] маркер
+                        println("📌 Добавлено описание шкалы")
                     }
-                }
-
-                // Определяем API тип
-                val apiType = when (state.displayType) {
-                    QuestionDisplayType.VOICE -> "voice"
-                    QuestionDisplayType.PHOTO -> "picture"
-                    else -> "text" // TEXT, SINGLE_CHOICE, MULTIPLE_CHOICE, SCALE
+                    else -> {
+                        // Для всех остальных типов НЕ добавляем маркеры
+                        println("📌 Без маркеров в тексте")
+                    }
                 }
 
                 // Подготавливаем варианты ответов
@@ -261,43 +294,67 @@ class QuestionEditorViewModel : ViewModel() {
                     }
                     QuestionDisplayType.SINGLE_CHOICE,
                     QuestionDisplayType.MULTIPLE_CHOICE -> {
-                        state.answerOptions.takeIf { it.isNotEmpty() }
+                        // Фильтруем пустые варианты
+                        state.answerOptions.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
                     }
                     else -> null
+                }
+
+                // ⚠️ Определяем is_public на основе типа вопроса
+                // Для MULTIPLE_CHOICE используем is_public = true, чтобы отличать от SINGLE_CHOICE
+                val isPublic = when (state.displayType) {
+                    QuestionDisplayType.MULTIPLE_CHOICE -> true
+                    QuestionDisplayType.SCALE -> true
+                    else -> true // По умолчанию true
                 }
 
                 if (state.isCreateMode) {
                     // Create new question
                     val request = CreateQuestionRequestDto(
-                        text = finalText.takeIf { it.isNotBlank() },
-                        isPublic = true,
+                        text = finalText,
+                        isPublic = isPublic, // ⚠️ Используем is_public для маркировки типа
                         answerOptions = answerOptions,
                         voiceFilename = state.voiceFilename,
                         pictureFilename = state.pictureFilename
                     )
 
-                    println("📦 Отправляем запрос на создание вопроса: $request")
-                    println("📦 Текст вопроса (trimmed): '${finalText.takeIf { it.isNotBlank() } ?: "null"}'")
+                    println("📦 Отправляем запрос на создание вопроса")
+                    println("📦 Тип вопроса: ${state.displayType}")
+                    println("📦 isPublic: $isPublic")
+                    println("📦 Текст (без маркеров): '$finalText'")
+                    println("📦 Варианты ответов: $answerOptions")
 
                     val created = repository.addQuestion(request)
-                    println("✅ Вопрос создан: ${created.id}")
-                    state = state.copy(isLoading = false, isSuccess = true)
+                    println("✅ Вопрос создан успешно!")
+
+                    state = state.copy(
+                        isLoading = false,
+                        isSuccess = true,
+                        questionId = created.id
+                    )
                 } else {
                     // Update existing question
                     val request = UpdateQuestionRequestDto(
                         text = finalText,
-                        isPublic = null, // Don't change public status on update
+                        isPublic = isPublic, // ⚠️ Обновляем is_public
                         answerOptions = answerOptions,
                         voiceFilename = state.voiceFilename,
                         pictureFilename = state.pictureFilename
                     )
 
-                    println("📦 Отправляем запрос на обновление вопроса: $request")
-                    println("📦 Текст вопроса (trimmed): '$finalText'")
+                    println("📦 Отправляем запрос на обновление вопроса ID ${state.questionId}")
+                    println("📦 Тип вопроса: ${state.displayType}")
+                    println("📦 isPublic: $isPublic")
+                    println("📦 Текст (без маркеров): '$finalText'")
+                    println("📦 Варианты ответов: $answerOptions")
 
                     val updated = repository.updateQuestion(state.questionId!!, request)
-                    println("✅ Вопрос обновлен: ${updated.id}")
-                    state = state.copy(isLoading = false, isSuccess = true)
+                    println("✅ Вопрос обновлен успешно!")
+
+                    state = state.copy(
+                        isLoading = false,
+                        isSuccess = true
+                    )
                 }
             } catch (e: Exception) {
                 println("❌ Ошибка сохранения вопроса: ${e.message}")

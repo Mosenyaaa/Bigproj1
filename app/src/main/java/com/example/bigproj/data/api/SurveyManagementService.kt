@@ -52,21 +52,21 @@ interface SurveyManagementService {
     suspend fun addQuestion(
         @Field("text") text: String? = null,
         @Field("is_public") isPublic: Boolean = true,
-        @Field("answer_options") answerOptions: String? = null, // JSON строка
+        @Field("answer_options") answerOptions: List<String>? = null,
         @Field("voice_filename") voiceFilename: String? = null,
         @Field("picture_filename") pictureFilename: String? = null
     ): Response<QuestionResponseDto>
 
-    @FormUrlEncoded
     @PUT("/api/doctor/update_question")
     suspend fun updateQuestion(
         @Query("question_id") questionId: Int,
-        @Field("text") text: String? = null,
-        @Field("is_public") isPublic: Boolean? = null,
-        @Field("answer_options") answerOptions: String? = null, // JSON строка
-        @Field("voice_filename") voiceFilename: String? = null,
-        @Field("picture_filename") pictureFilename: String? = null
+        @Query("text") text: String? = null,
+        @Query("is_public") isPublic: Boolean? = null,
+        @Query("answer_options") answerOptions: List<String>? = null, // ⚠️ Пробуем List<String>
+        @Query("voice_filename") voiceFilename: String? = null,
+        @Query("picture_filename") pictureFilename: String? = null
     ): Response<QuestionResponseDto>
+
 
     @DELETE("/api/doctor/delete_question")
     suspend fun deleteQuestion(@Query("question_id") questionId: Int): Response<Unit>

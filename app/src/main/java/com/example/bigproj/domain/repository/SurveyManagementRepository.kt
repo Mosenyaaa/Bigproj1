@@ -108,48 +108,70 @@ class SurveyManagementRepository(private val context: Context) {
     }
 
     suspend fun addQuestion(request: CreateQuestionRequestDto): QuestionResponseDto {
-        // Преобразуем список в JSON строку
-        val answerOptionsJson = if (request.answerOptions != null && request.answerOptions.isNotEmpty()) {
-            Json.encodeToString(request.answerOptions)
-        } else {
-            null
-        }
+        println("📦 Отправляем запрос на создание вопроса")
+        println("📦 text: ${request.text}")
+        println("📦 answerOptions: ${request.answerOptions}")
 
+        // Для addQuestion используем список напрямую (работает с @FormUrlEncoded)
         val response = surveyManagementService.addQuestion(
             text = request.text,
             isPublic = request.isPublic,
-            answerOptions = answerOptionsJson,
+            answerOptions = request.answerOptions,
             voiceFilename = request.voiceFilename,
             pictureFilename = request.pictureFilename
         )
+
+        println("📡 Ответ сервера: код=${response.code()}, успешно=${response.isSuccessful}")
+
         if (response.isSuccessful) {
-            return response.body() ?: throw Exception("Пустой ответ от сервера")
+            val result = response.body() ?: throw Exception("Пустой ответ от сервера")
+            println("✅ Вопрос создан успешно!")
+            println("✅ ID: ${result.id}")
+            println("✅ Текст: ${result.text}")
+            println("✅ Тип: ${result.type}")
+            println("✅ Ответы: ${result.answerOptions}")
+            println("✅ Extra data: ${result.extraData}")
+            return result
         } else {
+            val errorBody = response.errorBody()?.string()
+            println("❌ Тело ошибки: $errorBody")
             val errorMessage = ErrorHandler.parseError(response)
+            println("❌ Ошибка создания вопроса: $errorMessage")
             throw Exception(errorMessage)
         }
     }
 
     suspend fun updateQuestion(questionId: Int, request: UpdateQuestionRequestDto): QuestionResponseDto {
-        // Преобразуем список в JSON строку
-        val answerOptionsJson = if (request.answerOptions != null && request.answerOptions.isNotEmpty()) {
-            Json.encodeToString(request.answerOptions)
-        } else {
-            null
-        }
+        println("📦 Отправляем запрос на обновление вопроса ID $questionId")
+        println("📦 text: ${request.text}")
+        println("📦 answerOptions: ${request.answerOptions}")
 
+        // ⚠️ УБИРАЕМ преобразование в строку, пробуем отправить список
         val response = surveyManagementService.updateQuestion(
             questionId = questionId,
             text = request.text,
             isPublic = request.isPublic,
-            answerOptions = answerOptionsJson,
+            answerOptions = request.answerOptions, // ⚠️ Отправляем список напрямую
             voiceFilename = request.voiceFilename,
             pictureFilename = request.pictureFilename
         )
+
+        println("📡 Ответ сервера: код=${response.code()}, успешно=${response.isSuccessful}")
+
         if (response.isSuccessful) {
-            return response.body() ?: throw Exception("Пустой ответ от сервера")
+            val result = response.body() ?: throw Exception("Пустой ответ от сервера")
+            println("✅ Вопрос обновлен успешно!")
+            println("✅ ID: ${result.id}")
+            println("✅ Текст: ${result.text}")
+            println("✅ Тип: ${result.type}")
+            println("✅ Ответы: ${result.answerOptions}")
+            println("✅ Extra data: ${result.extraData}")
+            return result
         } else {
+            val errorBody = response.errorBody()?.string()
+            println("❌ Тело ошибки: $errorBody")
             val errorMessage = ErrorHandler.parseError(response)
+            println("❌ Ошибка обновления вопроса: $errorMessage")
             throw Exception(errorMessage)
         }
     }

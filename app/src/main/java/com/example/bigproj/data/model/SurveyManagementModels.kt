@@ -44,7 +44,8 @@ data class CreateQuestionRequestDto(
     @SerialName("is_public") val isPublic: Boolean = true,
     @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
-    @SerialName("picture_filename") val pictureFilename: String? = null
+    @SerialName("picture_filename") val pictureFilename: String? = null,
+    @SerialName("extra_data") val extraData: Map<String, String>? = null // ⚠️ ДОБАВЛЕНО
 )
 
 @Serializable
@@ -53,7 +54,8 @@ data class UpdateQuestionRequestDto(
     @SerialName("is_public") val isPublic: Boolean? = null,
     @SerialName("answer_options") val answerOptions: List<String>? = null,
     @SerialName("voice_filename") val voiceFilename: String? = null,
-    @SerialName("picture_filename") val pictureFilename: String? = null
+    @SerialName("picture_filename") val pictureFilename: String? = null,
+    @SerialName("extra_data") val extraData: Map<String, String>? = null // ⚠️ ДОБАВЛЕНО
 )
 
 @Serializable
