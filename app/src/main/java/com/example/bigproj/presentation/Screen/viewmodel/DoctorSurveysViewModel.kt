@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bigproj.domain.repository.DoctorRepository
+import com.example.bigproj.domain.repository.SurveyManagementRepository
 import com.example.bigproj.presentation.Screen.state.DoctorSurveysEvent
 import com.example.bigproj.presentation.Screen.state.DoctorSurveysState
 import com.example.bigproj.presentation.Screen.state.DoctorSurveyTab
@@ -19,9 +20,11 @@ class DoctorSurveysViewModel : ViewModel() {
         private set
 
     private lateinit var doctorRepository: DoctorRepository
+    private lateinit var surveyRepository: SurveyManagementRepository
 
     fun setupDependencies(context: Context) {
         doctorRepository = DoctorRepository(context)
+        surveyRepository = SurveyManagementRepository(context)
     }
 
     fun onEvent(event: DoctorSurveysEvent) {
@@ -31,6 +34,7 @@ class DoctorSurveysViewModel : ViewModel() {
                 state = state.copy(selectedTab = event.tab)
                 loadSurveys()
             }
+
             is DoctorSurveysEvent.SearchQueryChanged -> {
                 state = state.copy(searchQuery = event.query)
                 loadSurveys()
@@ -44,7 +48,7 @@ class DoctorSurveysViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 println("🔄 Загружаем опросы врача: tab=${state.selectedTab}, query='${state.searchQuery}'")
-                
+
                 val response = doctorRepository.getDoctorSurveys(
                     status = state.selectedTab.apiStatus,
                     query = state.searchQuery.takeIf { it.isNotBlank() },
@@ -65,6 +69,31 @@ class DoctorSurveysViewModel : ViewModel() {
                 state = state.copy(
                     isLoading = false,
                     errorMessage = "Ошибка загрузки опросов: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun deleteSurvey(surveyId: Int) {
+        state = state.copy(isLoading = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                println("🗑️ Удаляем опрос ID: $surveyId")
+
+                // Удаляем опрос через репозиторий
+                surveyRepository.deleteSurvey(surveyId)
+
+                println("✅ Опрос удален успешно")
+
+                // Обновляем список опросов
+                loadSurveys()
+
+            } catch (e: Exception) {
+                println("❌ Ошибка удаления опроса: ${e.message}")
+                state = state.copy(
+                    isLoading = false,
+                    errorMessage = "Ошибка удаления опроса: ${e.message}"
                 )
             }
         }

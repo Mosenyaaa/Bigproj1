@@ -19,6 +19,7 @@ import com.example.bigproj.presentation.Screen.main.MainScreen
 import com.example.bigproj.presentation.Screen.main.MainScreenWithBottomNav
 import kotlinx.serialization.Serializable
 import com.example.bigproj.presentation.Screen.PatientDoctorsScreen
+import com.example.bigproj.presentation.Screen.SelectQuestionScreen
 
 sealed class Screen {
     @Serializable
@@ -185,7 +186,7 @@ fun MainNav(
 
         composable("patient_details/{patientId}") { backStackEntry ->
             val patientId = backStackEntry.arguments?.getString("patientId")?.toIntOrNull() ?: 0
-            com.example.bigproj.presentation.Screen.PatientDetailsScreen(
+            com.example.bigproj.presentation.doctor.screen.PatientDetailsScreen(
                 patientId = patientId,
                 patient = null, // Will be loaded from state
                 onBackClick = { navHostController.popBackStack() }
@@ -231,6 +232,19 @@ fun MainNav(
 
         composable("create_appointment") {
             CreateAppointmentScreen(
+                navController = navHostController
+            )
+        }
+
+        composable("select_question/{surveyId}") { backStackEntry ->
+            val surveyId = backStackEntry.arguments?.getString("surveyId")?.toIntOrNull() ?: 0
+            SelectQuestionScreen(
+                surveyId = surveyId,
+                onBack = { navHostController.popBackStack() },
+                onQuestionAdded = {
+                    // Показать сообщение и вернуться назад
+                    navHostController.popBackStack()
+                },
                 navController = navHostController
             )
         }

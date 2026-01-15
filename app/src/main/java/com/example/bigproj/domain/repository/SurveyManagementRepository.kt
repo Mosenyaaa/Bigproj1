@@ -8,7 +8,6 @@ import com.example.bigproj.data.api.QuestionResponseDto
 import com.example.bigproj.data.api.SurveyWithQuestionsDto
 import com.example.bigproj.data.model.*
 import com.example.bigproj.domain.utils.ErrorHandler
-import kotlinx.serialization.json.Json
 
 class SurveyManagementRepository(private val context: Context) {
 
@@ -17,7 +16,6 @@ class SurveyManagementRepository(private val context: Context) {
         RetrofitClient.createSurveyManagementService(tokenManager)
     }
 
-    // SharedPreferences для хранения удаленных вопросов
     private val prefs: SharedPreferences by lazy {
         context.getSharedPreferences("deleted_questions", Context.MODE_PRIVATE)
     }
@@ -70,10 +68,7 @@ class SurveyManagementRepository(private val context: Context) {
         if (response.isSuccessful) {
             val allQuestions = response.body() ?: emptyList()
 
-            // Получаем ID локально удаленных вопросов
             val deletedIds = getDeletedQuestionIds()
-
-            // Фильтруем вопросы - убираем те, что удалены локально
             val activeQuestions = allQuestions.filter { question ->
                 !deletedIds.contains(question.id)
             }
@@ -82,10 +77,6 @@ class SurveyManagementRepository(private val context: Context) {
             println("   Всего от сервера: ${allQuestions.size}")
             println("   Локально удалено: ${deletedIds.size}")
             println("   Показываем: ${activeQuestions.size}")
-
-            if (deletedIds.isNotEmpty()) {
-                println("   ID удаленных вопросов: $deletedIds")
-            }
 
             return activeQuestions
         } else {
@@ -112,7 +103,6 @@ class SurveyManagementRepository(private val context: Context) {
         println("📦 text: ${request.text}")
         println("📦 answerOptions: ${request.answerOptions}")
 
-        // Для addQuestion используем список напрямую (работает с @FormUrlEncoded)
         val response = surveyManagementService.addQuestion(
             text = request.text,
             isPublic = request.isPublic,
@@ -126,11 +116,6 @@ class SurveyManagementRepository(private val context: Context) {
         if (response.isSuccessful) {
             val result = response.body() ?: throw Exception("Пустой ответ от сервера")
             println("✅ Вопрос создан успешно!")
-            println("✅ ID: ${result.id}")
-            println("✅ Текст: ${result.text}")
-            println("✅ Тип: ${result.type}")
-            println("✅ Ответы: ${result.answerOptions}")
-            println("✅ Extra data: ${result.extraData}")
             return result
         } else {
             val errorBody = response.errorBody()?.string()
@@ -143,15 +128,12 @@ class SurveyManagementRepository(private val context: Context) {
 
     suspend fun updateQuestion(questionId: Int, request: UpdateQuestionRequestDto): QuestionResponseDto {
         println("📦 Отправляем запрос на обновление вопроса ID $questionId")
-        println("📦 text: ${request.text}")
-        println("📦 answerOptions: ${request.answerOptions}")
 
-        // ⚠️ УБИРАЕМ преобразование в строку, пробуем отправить список
         val response = surveyManagementService.updateQuestion(
             questionId = questionId,
             text = request.text,
             isPublic = request.isPublic,
-            answerOptions = request.answerOptions, // ⚠️ Отправляем список напрямую
+            answerOptions = request.answerOptions,
             voiceFilename = request.voiceFilename,
             pictureFilename = request.pictureFilename
         )
@@ -161,11 +143,6 @@ class SurveyManagementRepository(private val context: Context) {
         if (response.isSuccessful) {
             val result = response.body() ?: throw Exception("Пустой ответ от сервера")
             println("✅ Вопрос обновлен успешно!")
-            println("✅ ID: ${result.id}")
-            println("✅ Текст: ${result.text}")
-            println("✅ Тип: ${result.type}")
-            println("✅ Ответы: ${result.answerOptions}")
-            println("✅ Extra data: ${result.extraData}")
             return result
         } else {
             val errorBody = response.errorBody()?.string()
@@ -185,20 +162,33 @@ class SurveyManagementRepository(private val context: Context) {
             println("❌ Ошибка удаления вопроса: $errorMessage")
             throw Exception(errorMessage)
         } else {
-            // Сохраняем ID удаленного вопроса локально
             saveDeletedQuestionId(questionId)
             println("✅ Вопрос $questionId удален на сервере и сохранен локально")
         }
     }
 
-    // Привязка вопросов
-    suspend fun addQuestionToSurvey(request: AddQuestionToSurveyRequestDto): SurveyWithQuestionsDto {
-        val response = surveyManagementService.addQuestionToSurvey(request)
-        if (response.isSuccessful) {
-            return response.body() ?: throw Exception("Пустой ответ от сервера")
-        } else {
-            val errorMessage = ErrorHandler.parseError(response)
-            throw Exception(errorMessage)
+    // Привязка вопросов - ВАЖНО: используем @FormUrlEncoded
+    suspend fun addQuestionToSurvey(surveyId: Int, questionId: Int, orderIndex: Int = 0): SurveyWithQuestionsDto {
+        println("➕ Добавляем вопрос $questionId в опрос $surveyId на позицию $orderIndex")
+
+        try {
+            val response = surveyManagementService.addQuestionToSurvey(
+                surveyId = surveyId,
+                questionId = questionId,
+                orderIndex = orderIndex
+            )
+
+            if (response.isSuccessful) {
+                println("✅ Вопрос успешно добавлен к опросу")
+                return response.body() ?: throw Exception("Пустой ответ от сервера")
+            } else {
+                val errorMessage = ErrorHandler.parseError(response)
+                println("❌ Ошибка добавления вопроса: $errorMessage")
+                throw Exception(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Исключение при добавлении вопроса: ${e.message}")
+            throw e
         }
     }
 
@@ -261,7 +251,7 @@ class SurveyManagementRepository(private val context: Context) {
         }
     }
 
-    // Вспомогательные методы для определения типа вопроса
+    // Вспомогательные методы
     fun determineQuestionType(
         text: String?,
         voiceFilename: String?,
@@ -281,21 +271,9 @@ class SurveyManagementRepository(private val context: Context) {
         pictureFilename: String?,
         answerOptions: List<String>?
     ): ValidationResult {
-        // Для текстового вопроса должен быть текст
         if (text.isNullOrBlank() && voiceFilename == null && pictureFilename == null) {
             return ValidationResult.Error("Вопрос должен содержать текст, голос или изображение")
         }
-
-        // Для голосового вопроса должен быть голосовой файл
-        if (voiceFilename != null && pictureFilename == null && text == null) {
-            // Голосовой вопрос без текста - допустимо
-        }
-
-        // Для вопроса с изображением должен быть файл изображения
-        if (pictureFilename != null && voiceFilename == null && text == null) {
-            // Вопрос с изображением без текста - допустимо
-        }
-
         return ValidationResult.Success
     }
 
@@ -313,7 +291,6 @@ class SurveyManagementRepository(private val context: Context) {
         return stringIds.mapNotNull { it.toIntOrNull() }.toSet()
     }
 
-    // Метод для очистки локального списка (если нужно)
     fun clearDeletedQuestionIds() {
         prefs.edit().remove("deleted_ids").apply()
         println("🧹 Очищен локальный список удаленных вопросов")

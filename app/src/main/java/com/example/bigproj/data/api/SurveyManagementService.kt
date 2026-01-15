@@ -1,3 +1,4 @@
+// data/api/SurveyManagementService.kt
 package com.example.bigproj.data.api
 
 import com.example.bigproj.data.model.*
@@ -15,7 +16,7 @@ interface SurveyManagementService {
         @Query("description") description: String? = null,
         @Query("status") status: String = "draft",
         @Query("is_public") isPublic: Boolean = false,
-        @Body body: CreateSurveyRequestDto? = null // дублируем для совместимости с бэком
+        @Body body: CreateSurveyRequestDto? = null
     ): Response<SurveyManagementResponseDto>
 
     @PUT("/api/doctor/update_survey")
@@ -34,7 +35,7 @@ interface SurveyManagementService {
         @Query("st") start: Int? = null,
         @Query("fn") finish: Int? = null,
         @Query("limit") limit: Int? = null,
-        @Query("is_public") isPublic: Boolean? = true // Добавить этот параметр
+        @Query("is_public") isPublic: Boolean? = true
     ): Response<List<QuestionResponseDto>>
 
     @Serializable
@@ -62,18 +63,22 @@ interface SurveyManagementService {
         @Query("question_id") questionId: Int,
         @Query("text") text: String? = null,
         @Query("is_public") isPublic: Boolean? = null,
-        @Query("answer_options") answerOptions: List<String>? = null, // ⚠️ Пробуем List<String>
+        @Query("answer_options") answerOptions: List<String>? = null,
         @Query("voice_filename") voiceFilename: String? = null,
         @Query("picture_filename") pictureFilename: String? = null
     ): Response<QuestionResponseDto>
 
-
     @DELETE("/api/doctor/delete_question")
     suspend fun deleteQuestion(@Query("question_id") questionId: Int): Response<Unit>
 
-    // Привязка вопросов к опросу
+    // Привязка вопросов к опросу - ВАЖНО: меняем на @FormUrlEncoded
+    @FormUrlEncoded
     @POST("/api/doctor/add_question_to_survey")
-    suspend fun addQuestionToSurvey(@Body request: AddQuestionToSurveyRequestDto): Response<SurveyWithQuestionsDto>
+    suspend fun addQuestionToSurvey(
+        @Field("survey_id") surveyId: Int,
+        @Field("question_id") questionId: Int,
+        @Field("order_index") orderIndex: Int = 0
+    ): Response<SurveyWithQuestionsDto>
 
     @DELETE("/api/doctor/remove_question_from_survey")
     suspend fun removeQuestionFromSurvey(@Query("question_in_survey_id") questionInSurveyId: Int): Response<SurveyWithQuestionsDto>
@@ -117,8 +122,8 @@ data class QuestionResponseDto(
 
 @Serializable
 data class SurveyWithQuestionsDto(
-    @SerialName("survey") val survey: SurveyManagementResponseDto,
-    @SerialName("questions") val questions: List<QuestionInSurveyDto>
+    @SerialName("survey") val survey: SurveyManagementResponseDto? = null,
+    @SerialName("questions") val questions: List<QuestionInSurveyDto> = emptyList()
 )
 
 @Serializable

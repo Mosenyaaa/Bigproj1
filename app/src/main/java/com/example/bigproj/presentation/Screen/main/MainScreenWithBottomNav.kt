@@ -130,8 +130,8 @@ fun MainScreenWithBottomNav(
         ) {
             if (isDoctor) {
                 when (selectedItem) {
-                    0 -> com.example.bigproj.presentation.Screen.PatientsScreen(navController = navController)
-                    1 -> com.example.bigproj.presentation.Screen.DoctorSurveysScreen(navController = navController)
+                    0 -> com.example.bigproj.presentation.doctor.screen.PatientsScreen(navController = navController)
+                    1 -> com.example.bigproj.presentation.doctor.screen.DoctorSurveysScreen(navController = navController)
                     2 -> com.example.bigproj.presentation.Screen.ConstructorScreen(navController = navController)
                     3 -> com.example.bigproj.presentation.Screen.AppointmentsScreen(navController = navController)
                     4 -> MainScreen(onNavigateTo = onNavigateTo, navController = navController)

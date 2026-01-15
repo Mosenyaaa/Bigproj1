@@ -54,16 +54,15 @@ fun CreateSurveyScreen(
 
     LaunchedEffect(state.isSuccess, state.createdSurveyId) {
         if (state.isSuccess && state.createdSurveyId != null) {
-            snackbarHostState.showSnackbar(
-                message = "Опрос создан успешно!",
-                duration = SnackbarDuration.Short
-            )
-            delay(1000)
-            // Navigate to edit screen
+            println("🚀 НЕМЕДЛЕННЫЙ переход к редактированию опроса ID: ${state.createdSurveyId}")
+
+            // СРАЗУ переходим без задержки
             navController?.navigate("edit_survey/${state.createdSurveyId}") {
                 popUpTo("create_survey") { inclusive = true }
             }
             onSurveyCreated?.invoke(state.createdSurveyId)
+
+            // Сбрасываем состояние после перехода
             viewModel.resetSuccess()
         }
     }
@@ -71,7 +70,7 @@ fun CreateSurveyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Survey") },
+                title = { Text("Создание нового опроса") },
                 navigationIcon = {
                     IconButton(onClick = { navController?.popBackStack() }) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
@@ -92,7 +91,7 @@ fun CreateSurveyScreen(
             // Title field
             Column {
                 Text(
-                    text = "Title *",
+                    text = "Название *",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF444444),
@@ -115,7 +114,7 @@ fun CreateSurveyScreen(
             // Description field
             Column {
                 Text(
-                    text = "Description (optional)",
+                    text = "Описание (опционально)",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF444444),
@@ -159,7 +158,7 @@ fun CreateSurveyScreen(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel")
+                    Text("Отмена")
                 }
                 Button(
                     onClick = { viewModel.onEvent(CreateSurveyEvent.CreateSurvey) },
@@ -173,7 +172,7 @@ fun CreateSurveyScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Create")
+                        Text("Создать")
                     }
                 }
             }

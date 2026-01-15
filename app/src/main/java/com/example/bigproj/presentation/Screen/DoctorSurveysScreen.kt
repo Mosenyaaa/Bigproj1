@@ -1,5 +1,5 @@
-// presentation/Screen/DoctorSurveysScreen.kt
-package com.example.bigproj.presentation.Screen
+// presentation/doctor/screen/DoctorSurveysScreen.kt
+package com.example.bigproj.presentation.doctor.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +29,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.bigproj.data.model.SurveySimpleDto
-import com.example.bigproj.presentation.Screen.state.DoctorSurveysEvent
-import com.example.bigproj.presentation.Screen.state.DoctorSurveyTab
-import com.example.bigproj.presentation.Screen.viewmodel.DoctorSurveysViewModel
+import com.example.bigproj.presentation.doctor.state.DoctorSurveysEvent
+import com.example.bigproj.presentation.doctor.state.DoctorSurveyTab
+import com.example.bigproj.presentation.doctor.viewmodel.DoctorSurveysViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,6 +46,7 @@ fun DoctorSurveysScreen(
     val state = viewModel.state
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDeleteSurveyDialog by remember { mutableStateOf<SurveySimpleDto?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.setupDependencies(context)
@@ -85,16 +85,6 @@ fun DoctorSurveysScreen(
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    navController?.navigate("create_survey")
-                },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
@@ -107,11 +97,11 @@ fun DoctorSurveysScreen(
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = { viewModel.onEvent(DoctorSurveysEvent.SearchQueryChanged(it)) },
-                placeholder = { Text("Поиск вопросов...") },
+                placeholder = { Text("Поиск опросов...") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Поиск") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
@@ -120,38 +110,178 @@ fun DoctorSurveysScreen(
                 singleLine = true
             )
 
-            // Tabs
-            TabRow(
-                selectedTabIndex = when (state.selectedTab) {
-                    DoctorSurveyTab.ALL -> 0
-                    DoctorSurveyTab.DRAFTS -> 1
-                    DoctorSurveyTab.ACTIVE -> 2
-                    DoctorSurveyTab.ARCHIVE -> 3
+            // Create survey button - СИНЯЯ КНОПКА ПОД ПОИСКОМ
+            Button(
+                onClick = {
+                    navController?.navigate("create_survey")
                 },
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF006FFD),
+                    contentColor = Color.White
+                )
             ) {
-                Tab(
-                    selected = state.selectedTab == DoctorSurveyTab.ALL,
-                    onClick = { viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ALL)) },
-                    text = { Text("Все") }
-                )
-                Tab(
-                    selected = state.selectedTab == DoctorSurveyTab.DRAFTS,
-                    onClick = { viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.DRAFTS)) },
-                    text = { Text("Черновики") }
-                )
-                Tab(
-                    selected = state.selectedTab == DoctorSurveyTab.ACTIVE,
-                    onClick = { viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ACTIVE)) },
-                    text = { Text("Активные") }
-                )
-                Tab(
-                    selected = state.selectedTab == DoctorSurveyTab.ARCHIVE,
-                    onClick = { viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ARCHIVE)) },
-                    text = { Text("Архив") }
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Создать опрос", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+
+            // Tabs - КАСТОМНЫЕ ТАБЫ ДЛЯ ПРАВИЛЬНОГО ОТОБРАЖЕНИЯ
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .height(48.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Custom Tab for ALL
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ALL))
+                        }
+                        .background(
+                            if (state.selectedTab == DoctorSurveyTab.ALL) Color(0xFF006FFD).copy(alpha = 0.1f) else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Все",
+                            fontSize = 14.sp,
+                            fontWeight = if (state.selectedTab == DoctorSurveyTab.ALL) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (state.selectedTab == DoctorSurveyTab.ALL) Color(0xFF006FFD) else Color(0xFF666666)
+                        )
+                        if (state.selectedTab == DoctorSurveyTab.ALL) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(3.dp)
+                                    .background(Color(0xFF006FFD))
+                            )
+                        }
+                    }
+                }
+
+                // Custom Tab for DRAFTS
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.DRAFTS))
+                        }
+                        .background(
+                            if (state.selectedTab == DoctorSurveyTab.DRAFTS) Color(0xFF006FFD).copy(alpha = 0.1f) else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Черновики",
+                            fontSize = 14.sp,
+                            fontWeight = if (state.selectedTab == DoctorSurveyTab.DRAFTS) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (state.selectedTab == DoctorSurveyTab.DRAFTS) Color(0xFF006FFD) else Color(0xFF666666)
+                        )
+                        if (state.selectedTab == DoctorSurveyTab.DRAFTS) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(3.dp)
+                                    .background(Color(0xFF006FFD))
+                            )
+                        }
+                    }
+                }
+
+                // Custom Tab for ACTIVE
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ACTIVE))
+                        }
+                        .background(
+                            if (state.selectedTab == DoctorSurveyTab.ACTIVE) Color(0xFF006FFD).copy(alpha = 0.1f) else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Активные",
+                            fontSize = 14.sp,
+                            fontWeight = if (state.selectedTab == DoctorSurveyTab.ACTIVE) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (state.selectedTab == DoctorSurveyTab.ACTIVE) Color(0xFF006FFD) else Color(0xFF666666)
+                        )
+                        if (state.selectedTab == DoctorSurveyTab.ACTIVE) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(3.dp)
+                                    .background(Color(0xFF006FFD))
+                            )
+                        }
+                    }
+                }
+
+                // Custom Tab for ARCHIVE
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            viewModel.onEvent(DoctorSurveysEvent.ChangeTab(DoctorSurveyTab.ARCHIVE))
+                        }
+                        .background(
+                            if (state.selectedTab == DoctorSurveyTab.ARCHIVE) Color(0xFF006FFD).copy(alpha = 0.1f) else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Архив",
+                            fontSize = 14.sp,
+                            fontWeight = if (state.selectedTab == DoctorSurveyTab.ARCHIVE) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (state.selectedTab == DoctorSurveyTab.ARCHIVE) Color(0xFF006FFD) else Color(0xFF666666)
+                        )
+                        if (state.selectedTab == DoctorSurveyTab.ARCHIVE) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(3.dp)
+                                    .background(Color(0xFF006FFD))
+                            )
+                        }
+                    }
+                }
             }
 
             // Surveys list
@@ -194,8 +324,11 @@ fun DoctorSurveysScreen(
                     items(state.surveys) { survey ->
                         DoctorSurveyCard(
                             survey = survey,
-                            onClick = {
+                            onEditClick = {
                                 navController?.navigate("edit_survey/${survey.id}")
+                            },
+                            onDeleteClick = {
+                                showDeleteSurveyDialog = survey
                             }
                         )
                     }
@@ -203,19 +336,65 @@ fun DoctorSurveysScreen(
             }
         }
     }
+
+    // Диалог подтверждения удаления опроса
+    if (showDeleteSurveyDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSurveyDialog = null },
+            title = { Text("Удалить опрос?") },
+            text = {
+                Column {
+                    Text("Вы уверены, что хотите удалить опрос:")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "\"${showDeleteSurveyDialog?.title}\"",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Это действие нельзя отменить.",
+                        fontSize = 14.sp,
+                        color = Color(0xFF666666)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteSurveyDialog?.let { survey ->
+                            viewModel.deleteSurvey(survey.id)
+                        }
+                        showDeleteSurveyDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFC62828),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSurveyDialog = null }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun DoctorSurveyCard(
     survey: SurveySimpleDto,
-    onClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -232,7 +411,7 @@ fun DoctorSurveyCard(
                     color = Color(0xFF1A1A1A),
                     modifier = Modifier.weight(1f)
                 )
-                
+
                 // Status badge
                 StatusBadge(status = survey.status)
             }
@@ -253,11 +432,55 @@ fun DoctorSurveyCard(
 
             // Creation date
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = formatCreationDate(survey.creationDate),
-                fontSize = 12.sp,
-                color = Color(0xFF888888)
-            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatCreationDate(survey.creationDate),
+                    fontSize = 12.sp,
+                    color = Color(0xFF888888)
+                )
+
+                // Action buttons - ИКОНКИ КАК В КОНСТРУКТОРЕ
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Edit button - как в конструкторе
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color(0xFFF5F5F5)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Редактировать",
+                            tint = Color(0xFF006FFD),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    // Delete button - как в конструкторе
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color(0xFFF5F5F5)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Удалить",
+                            tint = Color(0xFFC62828),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

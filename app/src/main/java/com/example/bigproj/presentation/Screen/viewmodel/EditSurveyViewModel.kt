@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bigproj.data.model.AddQuestionToSurveyRequestDto
+import com.example.bigproj.data.model.SurveyManagementResponseDto
 import com.example.bigproj.data.model.UpdateSurveyRequestDto
 import com.example.bigproj.domain.repository.SurveyManagementRepository
 import com.example.bigproj.presentation.Screen.state.EditSurveyEvent
@@ -63,25 +64,59 @@ class EditSurveyViewModel : ViewModel() {
             try {
                 println("🔄 Загружаем опрос ID: $surveyId")
                 val surveyWithQuestions = repository.getSurveyWithQuestions(surveyId)
-                
-                // Sort questions by order_index
-                val sortedQuestions = surveyWithQuestions.questions.sortedBy { it.orderIndex }
 
-                state = state.copy(
-                    isLoading = false,
-                    survey = surveyWithQuestions.survey,
-                    questions = sortedQuestions,
-                    title = surveyWithQuestions.survey.title,
-                    description = surveyWithQuestions.survey.description ?: "",
-                    status = surveyWithQuestions.survey.status
-                )
-                println("✅ Опрос загружен: ${surveyWithQuestions.survey.title}, вопросов: ${sortedQuestions.size}")
+                // ⚠️ ПРОВЕРЯЕМ, ЧТО survey НЕ NULL
+                if (surveyWithQuestions.survey == null) {
+                    // Если опрос не загружен, создаем временный
+                    println("⚠️ Сервер вернул null survey, создаем временный объект")
+                    val tempSurvey = SurveyManagementResponseDto(
+                        id = surveyId,
+                        creationDate = "",
+                        title = state.title.ifEmpty { "Новый опрос" },
+                        description = state.description,
+                        status = state.status,
+                        userId = 0 // временное значение
+                    )
+
+                    state = state.copy(
+                        isLoading = false,
+                        survey = tempSurvey,
+                        questions = surveyWithQuestions.questions,
+                        title = state.title.ifEmpty { "Новый опрос" },
+                        description = state.description
+                    )
+                } else {
+                    // Sort questions by order_index
+                    val sortedQuestions = surveyWithQuestions.questions.sortedBy { it.orderIndex }
+
+                    state = state.copy(
+                        isLoading = false,
+                        survey = surveyWithQuestions.survey,
+                        questions = sortedQuestions,
+                        title = surveyWithQuestions.survey.title,
+                        description = surveyWithQuestions.survey.description ?: "",
+                        status = surveyWithQuestions.survey.status
+                    )
+                    println("✅ Опрос загружен: ${surveyWithQuestions.survey.title}, вопросов: ${sortedQuestions.size}")
+                }
             } catch (e: Exception) {
                 println("❌ Ошибка загрузки опроса: ${e.message}")
-                state = state.copy(
-                    isLoading = false,
-                    errorMessage = "Ошибка загрузки опроса: ${e.message}"
-                )
+
+                // ⚠️ ЕСЛИ ОПРОС СОЗДАН, НО ЕСТЬ ОШИБКА - ВСЕ РАВНО ПОКАЗЫВАЕМ ФОРМУ
+                if (surveyId > 0) {
+                    state = state.copy(
+                        isLoading = false,
+                        errorMessage = "Опрос загружен, но детали временно недоступны. Вы можете редактировать основные данные.",
+                        title = state.title.ifEmpty { "Новый опрос" },
+                        description = state.description
+                    )
+                    println("⚠️ Переходим в режим 'частичной загрузки' для опроса ID: $surveyId")
+                } else {
+                    state = state.copy(
+                        isLoading = false,
+                        errorMessage = "Ошибка загрузки опроса: ${e.message}"
+                    )
+                }
             }
         }
     }
@@ -121,7 +156,7 @@ class EditSurveyViewModel : ViewModel() {
             try {
                 println("🗑️ Удаляем вопрос из опроса: questionInSurveyId=$questionInSurveyId")
                 val updated = repository.removeQuestionFromSurvey(questionInSurveyId)
-                
+
                 // Reload survey
                 loadSurvey()
                 state = state.copy(isLoading = false)
@@ -138,7 +173,7 @@ class EditSurveyViewModel : ViewModel() {
 
     private fun swapQuestions(index1: Int, index2: Int) {
         val surveyId = currentSurveyId ?: return
-        if (index1 == index2 || index1 < 0 || index2 < 0 || 
+        if (index1 == index2 || index1 < 0 || index2 < 0 ||
             index1 >= state.questions.size || index2 >= state.questions.size) {
             return
         }
@@ -149,14 +184,14 @@ class EditSurveyViewModel : ViewModel() {
             try {
                 val question1 = state.questions[index1]
                 val question2 = state.questions[index2]
-                
+
                 println("🔄 Меняем местами вопросы: ${question1.orderIndex} <-> ${question2.orderIndex}")
                 val updated = repository.swapQuestionsInSurvey(
                     surveyId = surveyId,
                     firstOrderIndex = question1.orderIndex,
                     secondOrderIndex = question2.orderIndex
                 )
-                
+
                 // Reload survey
                 loadSurvey()
                 state = state.copy(isLoading = false)
@@ -179,16 +214,16 @@ class EditSurveyViewModel : ViewModel() {
             try {
                 // Add question to the end (order_index = questions.size)
                 val orderIndex = state.questions.size
-                
+
                 println("➕ Добавляем вопрос $questionId в опрос $surveyId на позицию $orderIndex")
-                val request = AddQuestionToSurveyRequestDto(
+
+                // ИСПРАВЛЕНИЕ: Используем метод с отдельными параметрами, а не DTO
+                val updated = repository.addQuestionToSurvey(
                     surveyId = surveyId,
                     questionId = questionId,
                     orderIndex = orderIndex
                 )
-                
-                val updated = repository.addQuestionToSurvey(request)
-                
+
                 // Reload survey
                 loadSurvey()
                 state = state.copy(
@@ -215,7 +250,7 @@ class EditSurveyViewModel : ViewModel() {
             try {
                 println("🔄 Изменяем статус опроса $surveyId на $newStatus")
                 val updated = repository.changeSurveyStatus(surveyId, newStatus)
-                
+
                 // Reload survey
                 loadSurvey()
                 state = state.copy(isLoading = false, status = newStatus)

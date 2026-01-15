@@ -254,6 +254,16 @@ class SurveyManagementViewModel : ViewModel() {
                 // Загружаем опрос с вопросами
                 val surveyWithQuestions = repository.getSurveyWithQuestions(surveyId)
 
+                // ⚠️ БЕЗОПАСНАЯ ПРОВЕРКА НА NULL
+                val survey = surveyWithQuestions.survey
+                if (survey == null) {
+                    state = state.copy(
+                        isLoading = false,
+                        errorMessage = "Ошибка: опрос не найден или данные недоступны"
+                    )
+                    return@launch
+                }
+
                 // Преобразуем в UI модели
                 val questions = surveyWithQuestions.questions.map { question ->
                     QuestionUiModel(
@@ -269,10 +279,10 @@ class SurveyManagementViewModel : ViewModel() {
 
                 state = state.copy(
                     isLoading = false,
-                    surveyTitle = surveyWithQuestions.survey.title,
-                    surveyDescription = surveyWithQuestions.survey.description ?: "",
-                    surveyStatus = surveyWithQuestions.survey.status,
-                    isPublic = surveyWithQuestions.survey.isPublic,
+                    surveyTitle = survey.title,
+                    surveyDescription = survey.description ?: "",
+                    surveyStatus = survey.status,
+                    isPublic = survey.isPublic,
                     questions = questions,
                     currentQuestionIndex = if (questions.isNotEmpty()) 0 else -1,
                     isEditingExisting = true,
@@ -379,7 +389,11 @@ class SurveyManagementViewModel : ViewModel() {
                                 )
 
                             println("   Привязываем вопрос ${createdQuestion.id} к опросу ${survey.id}...")
-                            val updatedSurvey = repository.addQuestionToSurvey(addToSurveyRequest)
+                            val updatedSurvey = repository.addQuestionToSurvey(
+                                surveyId = survey.id,
+                                questionId = createdQuestion.id,
+                                orderIndex = index
+                            )
                             println("   ✅ Вопрос привязан. Вопросов в опросе: ${updatedSurvey.questions.size}")
                         } else {
                             println("❌ Ошибка: не получен ID созданного вопроса")

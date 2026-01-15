@@ -64,7 +64,7 @@ data class SurveyManagementState(
 data class QuestionUiModel(
     val id: Int = 0,
     var text: String = "",
-    var type: String = "text", // будет переопределяться автоматически
+    var type: String? = "text", // Делаем nullable с дефолтным значением
     var voiceFilename: String? = null,
     var pictureFilename: String? = null,
     var answerOptions: List<String> = emptyList(),
@@ -78,4 +78,8 @@ data class QuestionUiModel(
             "combined" -> "🔗 Комбинированный"
             else -> "❓ Неизвестный"
         }
+
+    // Добавляем вспомогательное свойство для безопасного доступа
+    val safeType: String
+        get() = type ?: "text"
 }
